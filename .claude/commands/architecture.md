@@ -180,6 +180,62 @@ Ask: "Any external services needed?"
 
 ---
 
+### Part 3.5: Research Best Practices via Context7 (MANDATORY)
+
+> **CRITICAL**: Before designing components, research current best practices for each technology in the stack using Context7 MCP.
+
+**For each key technology in the stack, query Context7:**
+
+1. **Resolve library ID:**
+   ```
+   mcp__context7__resolve-library-id({
+     libraryName: "fastify",
+     query: "best practices plugins validation TypeScript"
+   })
+   ```
+
+2. **Query documentation:**
+   ```
+   mcp__context7__query-docs({
+     libraryId: "/fastify/fastify",
+     query: "route validation schema TypeScript best practices"
+   })
+   ```
+
+**Required queries based on stack:**
+
+| Technology | Query Focus |
+|------------|-------------|
+| **React** | hooks patterns, state management, performance |
+| **TanStack Query** | mutations, caching, error handling |
+| **Fastify/Express** | plugins, validation, middleware, TypeScript |
+| **Prisma** | schema design, relations, transactions, migrations |
+| **TMA.js** | init data validation, theming, navigation |
+| **Zod** | schema composition, error handling, transforms |
+| **Zustand/Jotai** | store patterns, selectors, persistence |
+
+**Process:**
+1. Query context7 for each technology in the chosen stack
+2. Extract specific code patterns and best practices
+3. Include these patterns in:
+   - Component design (Part 4)
+   - API contracts (Part 6)
+   - Code examples throughout the document
+
+**Example output to include:**
+```typescript
+// From Context7: TMA.js init data validation
+import { validate, isValid } from '@tma.js/init-data-node';
+
+validate(initDataString, BOT_TOKEN, {
+  expiresIn: 3600 // Reject if older than 1 hour
+});
+```
+
+**Store as:** `{{technology_best_practices}}`
+
+---
+
 ### Part 4: System Components
 
 **Define 3-10 major components** (based on project level).
