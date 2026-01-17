@@ -7,18 +7,37 @@
 Создаёт полную структуру проекта с нуля, включая:
 - Backend на Node.js/Express с VSA архитектурой
 - Frontend на React/TypeScript с FSD архитектурой
-- Docker конфигурацию
-- CI/CD пайплайны
-- Базовые конфигурации (ESLint, Prettier, TypeScript)
+- Docker конфигурацию (PostgreSQL, Redis)
+- MCP серверы (context7, playwright)
+- Базовые конфигурации (TypeScript strict, Tailwind)
+
+## Быстрый старт
+
+Запусти скрипт автоматизации:
+
+```bash
+bash ~/.claude/scripts/init-project.sh [project-name]
+```
+
+**Что делает скрипт:**
+1. Создаёт структуру проекта (FSD + VSA)
+2. Создаёт `.mcp.json` с MCP серверами
+3. Запускает Docker (PostgreSQL, Redis)
+4. Ждёт healthcheck всех сервисов
+5. Устанавливает dependencies (pnpm install)
+6. Настраивает Prisma
+7. Проверяет что backend работает
+8. Инициализирует git
 
 ## Входные параметры
 
-- `$PROJECT_NAME` — название проекта (kebab-case)
-- `$DB_TYPE` — тип базы данных (postgres | mysql | sqlite), по умолчанию postgres
+- `$PROJECT_NAME` — название проекта (по умолчанию: имя текущей папки)
+- `--db postgres|mysql|sqlite` — тип базы данных (по умолчанию: postgres)
+- `--postgres-port 5433` — порт PostgreSQL (по умолчанию: 5433)
 
-## Workflow
+## Структура проекта
 
-### 1. Создать Backend структуру (VSA)
+### Backend (VSA)
 
 ```
 backend/
@@ -41,12 +60,11 @@ backend/
 │   └── app.ts
 ├── prisma/
 │   └── schema.prisma
-├── tests/
 ├── package.json
 └── tsconfig.json
 ```
 
-### 2. Создать Frontend структуру (FSD)
+### Frontend (FSD)
 
 ```
 frontend/
@@ -65,9 +83,9 @@ frontend/
 │   │   ├── lib/
 │   │   ├── hooks/
 │   │   ├── api/
-│   │   │   └── client.ts     # API client (body: null, not undefined!)
+│   │   │   └── client.ts
 │   │   └── types/
-│   └── vite-env.d.ts         # ОБЯЗАТЕЛЬНО для import.meta.env
+│   └── vite-env.d.ts
 ├── public/
 ├── package.json
 ├── tsconfig.json
@@ -75,89 +93,9 @@ frontend/
 └── tailwind.config.js
 ```
 
-### 3. Скопировать templates
+## MCP серверы
 
-- `.editorconfig`
-- `.prettierrc`
-- `.eslintrc.js` (backend + frontend)
-- `tsconfig.json` (strict mode)
-- `.gitignore`
-
-### 4. Установить dependencies
-
-**Backend:**
-```bash
-pnpm add express zod prisma @prisma/client pino
-pnpm add -D typescript @types/express @types/node vitest
-```
-
-**Frontend:**
-```bash
-pnpm add react react-dom @tanstack/react-query zustand
-pnpm add -D typescript vite @vitejs/plugin-react tailwindcss
-```
-
-### 5. Инициализировать git
-
-```bash
-git init
-git add .
-git commit -m "chore: initial project setup"
-```
-
-### 6. Создать .env.example и .env
-
-**ВАЖНО:** Использовать порт 5433 для PostgreSQL (5432 часто занят)!
-
-```env
-# Backend
-NODE_ENV=development
-PORT=3001
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/myapp
-CORS_ORIGIN=http://localhost:5173
-
-# Frontend
-VITE_API_URL=http://localhost:3001
-```
-
-После создания `.env.example` — **скопировать в `.env`**:
-```bash
-cp backend/.env.example backend/.env
-```
-
-### 6.1. Создать vite-env.d.ts (ОБЯЗАТЕЛЬНО!)
-
-Файл `frontend/src/vite-env.d.ts`:
-```typescript
-/// <reference types="vite/client" />
-
-interface ImportMetaEnv {
-  readonly VITE_API_URL?: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-```
-
-### 6.2. API Client — правильная типизация body
-
-В `frontend/src/shared/api/client.ts` для POST/PUT:
-```typescript
-// ПРАВИЛЬНО — используй null, не undefined
-const body = data !== undefined ? JSON.stringify(data) : null;
-```
-
-### 7. Настроить Docker
-
-- `docker-compose.yml` — dev окружение (db, redis)
-- `backend/Dockerfile` — production image
-- `frontend/Dockerfile` — production image (nginx)
-- `.dockerignore`
-
-### 8. Создать .mcp.json (MCP серверы для проекта)
-
-**ОБЯЗАТЕЛЬНО** создать в корне проекта `.mcp.json`:
+Автоматически создаётся `.mcp.json`:
 
 ```json
 {
@@ -176,43 +114,104 @@ const body = data !== undefined ? JSON.stringify(data) : null;
 }
 ```
 
-Это даёт Claude Code доступ к:
-- **context7** — актуальная документация библиотек (React, Express, Prisma, etc.)
-- **playwright** — E2E тестирование
+После создания проекта запусти `/mcp` чтобы проверить подключение.
 
-После создания файла проверь `/mcp` в Claude Code — должны быть видны Project MCPs.
+## Docker сервисы
 
-## Output
+- **PostgreSQL**: localhost:5433 (не 5432 — избегаем конфликтов)
+- **Redis**: localhost:6380 (не 6379 — избегаем конфликтов)
 
-После выполнения:
-- Проект готов к разработке
-- `pnpm dev` запускает оба сервера
-- База данных настроена через Docker
-- OpenAPI spec готов для первого endpoint
+## Важные детали
+
+### vite-env.d.ts (ОБЯЗАТЕЛЬНО!)
+
+Файл `frontend/src/vite-env.d.ts` критичен для TypeScript:
+
+```typescript
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+```
+
+### API Client — body: null, не undefined!
+
+В `frontend/src/shared/api/client.ts`:
+
+```typescript
+// ПРАВИЛЬНО — используй null, не undefined
+body: body !== undefined ? JSON.stringify(body) : null,
+```
 
 ## Примеры использования
 
-### Базовая инициализация
-```
-/init-project my-awesome-app
+### В новой папке
+
+```bash
+mkdir my-app && cd my-app
+bash ~/.claude/scripts/init-project.sh
 ```
 
-### С MySQL
-```
-/init-project my-app --db mysql
+### С именем проекта
+
+```bash
+mkdir my-app && cd my-app
+bash ~/.claude/scripts/init-project.sh awesome-project
 ```
 
-### С кастомным портом
+### С кастомным портом PostgreSQL
+
+```bash
+bash ~/.claude/scripts/init-project.sh --postgres-port 5434
 ```
-/init-project my-app --port 8080
+
+## Команды после создания
+
+```bash
+pnpm dev              # Запустить оба сервера
+pnpm dev:backend      # Только backend
+pnpm dev:frontend     # Только frontend
+pnpm db:studio        # Prisma Studio
+pnpm generate-api-types  # Сгенерировать типы из OpenAPI
 ```
 
 ## Критерии успеха
 
 - [ ] Все файлы созданы без ошибок
+- [ ] Docker сервисы healthy (PostgreSQL, Redis)
 - [ ] `pnpm install` проходит успешно
 - [ ] TypeScript компилируется без ошибок
-- [ ] ESLint не показывает ошибок
-- [ ] Docker Compose поднимается
 - [ ] Health endpoint возвращает 200
 - [ ] `.mcp.json` создан и MCP серверы видны в `/mcp`
+
+## Troubleshooting
+
+### PostgreSQL не запускается
+
+```bash
+# Удалить старые volumes
+docker compose down -v
+docker compose up -d
+```
+
+### Порт занят
+
+```bash
+# Проверить что занимает порт
+lsof -i :3001
+lsof -i :5433
+
+# Убить процесс
+kill -9 <PID>
+```
+
+### MCP серверы не видны
+
+1. Проверь что `.mcp.json` в корне проекта
+2. Перезапусти Claude Code
+3. Запусти `/mcp` для проверки
