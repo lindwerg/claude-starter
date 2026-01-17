@@ -155,6 +155,33 @@ const body = data !== undefined ? JSON.stringify(data) : null;
 - `frontend/Dockerfile` — production image (nginx)
 - `.dockerignore`
 
+### 8. Создать .mcp.json (MCP серверы для проекта)
+
+**ОБЯЗАТЕЛЬНО** создать в корне проекта `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--caps=testing"]
+    }
+  }
+}
+```
+
+Это даёт Claude Code доступ к:
+- **context7** — актуальная документация библиотек (React, Express, Prisma, etc.)
+- **playwright** — E2E тестирование
+
+После создания файла проверь `/mcp` в Claude Code — должны быть видны Project MCPs.
+
 ## Output
 
 После выполнения:
@@ -188,3 +215,4 @@ const body = data !== undefined ? JSON.stringify(data) : null;
 - [ ] ESLint не показывает ошибок
 - [ ] Docker Compose поднимается
 - [ ] Health endpoint возвращает 200
+- [ ] `.mcp.json` создан и MCP серверы видны в `/mcp`
