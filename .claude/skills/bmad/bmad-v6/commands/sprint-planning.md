@@ -144,6 +144,83 @@ Project Inventory:
 
 ---
 
+### Part 2.5: Decompose Stories into Atomic Tasks
+
+**For Ralph Loop to work autonomously, decompose each story into atomic tasks (30-60 min each).**
+
+**Why atomic tasks?**
+- Ralph can complete one task without losing context
+- Clear progress tracking
+- Easy checkpoint/resume on failures
+- Automatic transition to next task
+
+**Task decomposition rules:**
+
+1. **Each task = 30-60 minutes MAX**
+   - Single responsibility (1 файл = 1 task)
+   - Clear outputs (specific files created/modified)
+   - Testable acceptance criteria
+
+2. **Task types:**
+   - `api` — OpenAPI spec changes
+   - `backend` — Controller, service, repository
+   - `frontend` — Components, hooks, pages
+   - `test` — Unit, integration, E2E tests
+   - `devops` — CI/CD, Docker, deploy
+
+3. **Decomposition patterns:**
+
+**CRUD Feature (30-60 min per task):**
+```
+STORY-001: User management (8 points)
+├── TASK-001-A: Add User schema to Prisma (backend, 30min)
+├── TASK-001-B: Add CRUD endpoints to openapi.yaml (api, 30min)
+├── TASK-001-C: Implement createUser controller (backend, 30min)
+├── TASK-001-D: Implement createUser service (backend, 45min)
+├── TASK-001-E: Implement getUsers controller (backend, 30min)
+├── TASK-001-F: Implement getUsers service (backend, 30min)
+├── TASK-001-G: Implement updateUser slice (backend, 45min)
+├── TASK-001-H: Implement deleteUser slice (backend, 30min)
+├── TASK-001-I: Create UserCard entity (frontend, 30min)
+├── TASK-001-J: Create UserList widget (frontend, 45min)
+├── TASK-001-K: Create UserForm feature (frontend, 45min)
+├── TASK-001-L: Wire API calls with TanStack Query (frontend, 30min)
+├── TASK-001-M: Write backend integration tests (test, 60min)
+└── TASK-001-N: Write frontend component tests (test, 45min)
+Total: 14 tasks, ~8 hours
+```
+
+**API Integration (30-60 min per task):**
+```
+STORY-002: Payment gateway (5 points)
+├── TASK-002-A: Add payment types to openapi.yaml (api, 30min)
+├── TASK-002-B: Create Stripe types (backend, 30min)
+├── TASK-002-C: Create Stripe service wrapper (backend, 45min)
+├── TASK-002-D: Implement createInvoice controller (backend, 30min)
+├── TASK-002-E: Implement createInvoice service (backend, 45min)
+├── TASK-002-F: Implement webhook controller (backend, 30min)
+├── TASK-002-G: Implement webhook service (backend, 45min)
+├── TASK-002-H: Create PaymentForm component (frontend, 45min)
+├── TASK-002-I: Handle payment states in UI (frontend, 30min)
+└── TASK-002-J: Write integration tests (test, 60min)
+Total: 10 tasks, ~6 hours
+```
+
+4. **Dependency rules:**
+   - API spec before implementation
+   - Schema/types first
+   - Backend before frontend
+   - Implementation before tests
+
+5. **Task ID format:**
+   - `TASK-{story_number}-{letter}` (e.g., TASK-001-A, TASK-001-B)
+   - Letters sequential within story
+   - Easy to track relationships
+
+**Do NOT create tasks larger than 60 minutes. If a task seems bigger, split it further.**
+
+---
+
 ### Part 3: Estimate Story Points
 
 **For each story, assign points using Fibonacci scale:**
@@ -539,6 +616,94 @@ team:
 
 ---
 
+### Part 10.5: Generate Task Queue for Ralph Loop
+
+**Create `.bmad/task-queue.yaml` for autonomous execution:**
+
+1. **For each story in Sprint 1:**
+   - Use decomposition from Part 2.5
+   - Generate task entries with:
+     - Unique ID: `TASK-{story_num}-{letter}`
+     - Type: `api | backend | frontend | test | devops`
+     - Estimated minutes (30-60 max)
+     - Dependencies array
+     - Outputs (file paths)
+     - Acceptance criteria
+     - Initial status: `pending`
+
+2. **Task queue structure:**
+   ```yaml
+   version: "1.0"
+   project: "{project_name}"
+   sprint: 1
+   created_at: "{date}"
+
+   summary:
+     total_stories: {count}
+     total_tasks: {count}
+     estimated_hours: {sum}
+     completed_tasks: 0
+     blocked_tasks: 0
+
+   current_task: null
+
+   tasks:
+     - id: "TASK-001-A"
+       story_id: "STORY-001"
+       title: "Add User schema to Prisma"
+       type: "backend"
+       estimated_minutes: 30
+       status: "pending"
+       depends_on: []
+       outputs:
+         - "backend/prisma/schema.prisma"
+       acceptance:
+         - "User model with required fields"
+       retries: 0
+       max_retries: 3
+
+     - id: "TASK-001-B"
+       story_id: "STORY-001"
+       title: "Add auth endpoints to openapi.yaml"
+       type: "api"
+       estimated_minutes: 30
+       status: "pending"
+       depends_on: ["TASK-001-A"]
+       outputs:
+         - "openapi.yaml"
+       acceptance:
+         - "POST /auth/register endpoint defined"
+       retries: 0
+       max_retries: 3
+     # ... more tasks
+
+   limits:
+     per_task: 5
+     per_story: 30
+     per_session: 100
+   ```
+
+3. **Calculate summary:**
+   ```
+   Sprint 1 Task Queue:
+   - Stories: 8
+   - Tasks: 67
+   - Estimated: 42 hours
+   ```
+
+4. **Save file:**
+   - Path: `.bmad/task-queue.yaml`
+   - Use template from `templates/task-queue.template.yaml`
+
+**Task queue enables Ralph Loop to:**
+- Know exactly what to do next (no ambiguity)
+- Track progress at granular level
+- Resume after interruption or failure
+- Auto-transition between tasks
+- Report detailed progress
+
+---
+
 ## Display Summary to User
 
 Show concise summary:
@@ -587,19 +752,22 @@ Run /dev-story STORY-001 to begin implementation
 **Level 1-2:**
 ```
 ✓ Sprint plan complete ({sprints} sprint{s})
+✓ Task queue generated: {task_count} tasks
 
 Next: Begin Sprint 1
 Options:
-1. /create-story STORY-001 - Create detailed story document
-2. /dev-story STORY-001 - Start implementing immediately
-3. /sprint-status - Check current sprint status
+1. /ralph-loop - Autonomous implementation (recommended!)
+2. /dev-story STORY-001 - Implement single story manually
+3. /create-story STORY-001 - Create detailed story document
+4. /sprint-status - Check current sprint status
 
-Recommended: Start with /dev-story for first story
+Recommended: /ralph-loop for autonomous execution
 ```
 
 **Level 3-4:**
 ```
 ✓ Sprint plan complete ({sprints} sprints)
+✓ Task queue generated: {task_count} atomic tasks
 
 Implementation roadmap ready:
 ✓ Sprint 1: {goal}
@@ -608,9 +776,13 @@ Implementation roadmap ready:
 ...
 
 Next: Begin Sprint 1
-Run /dev-story STORY-001 to start first story
 
-Or run /create-story STORY-XXX to generate detailed story docs
+**Autonomous (recommended):**
+/ralph-loop — Ralph will execute tasks one by one automatically
+
+**Manual:**
+/dev-story STORY-001 — Implement story by story
+/create-story STORY-XXX — Generate detailed story docs first
 ```
 
 ---
@@ -694,13 +866,21 @@ Or run /create-story STORY-XXX to generate detailed story docs
 ## Notes for LLMs
 
 - Maintain approach (organized, pragmatic, team-focused)
-- Use TodoWrite to track 10 sprint planning parts
+- Use TodoWrite to track 11 sprint planning parts (including 2.5 and 10.5)
 - Break stories systematically - don't skip any FRs
 - Apply sizing guidelines strictly (no stories >8 points)
+- **CRITICAL: Decompose stories into atomic tasks (30-60 min each) in Part 2.5**
 - Calculate realistic capacity based on team size and experience
 - Create traceability tables to ensure coverage
 - Reference helpers.md for all common operations
 - Initialize sprint status YAML for tracking
-- Hand off to Developer when ready for implementation
+- **CRITICAL: Generate task-queue.yaml in Part 10.5 for Ralph Loop**
+- Recommend /ralph-loop for autonomous execution
 
-**Remember:** Good sprint planning = smooth implementation. Poor planning = chaos, delays, and frustration. Take time to break stories down properly and estimate accurately.
+**Task Queue is KEY:**
+- Without task queue, Ralph Loop cannot work autonomously
+- Each task must be 30-60 minutes max
+- Dependencies must be explicit (depends_on array)
+- Task types: api → backend → frontend → test
+
+**Remember:** Good sprint planning = smooth implementation. Poor planning = chaos, delays, and frustration. Take time to break stories down properly and estimate accurately. **Task queue enables Ralph to execute automatically!**

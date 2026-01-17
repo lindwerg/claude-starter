@@ -798,6 +798,29 @@ GitHub Actions runs on push/PR to main:
 
 **Config:** `.github/workflows/ci.yml`
 
+## Task Queue (Ralph Loop)
+
+Sprint planning creates `.bmad/task-queue.yaml` for autonomous execution:
+
+```bash
+# Check task queue status
+yq '.summary' .bmad/task-queue.yaml
+
+# Run autonomous implementation
+/ralph-loop
+
+# Check progress
+yq '.tasks[] | select(.status == "done")' .bmad/task-queue.yaml
+```
+
+**Task states:**
+- `pending` — Awaiting execution
+- `in_progress` — Currently executing
+- `done` — Completed successfully
+- `blocked` — Needs human intervention
+
+**Auto-transition:** After completing a task, Ralph automatically picks up the next one.
+
 ## Related Documents
 
 - Architecture: `docs/architecture-{{project_name}}-{{date}}.md`
