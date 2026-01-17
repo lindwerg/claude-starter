@@ -10,6 +10,17 @@ allowed-tools: [Bash, Read, Write, Edit, Grep, Glob, Task, TodoWrite]
 
 Ralph executes atomic tasks from `.bmad/task-queue.yaml` one by one until completion or blocker.
 
+## CRITICAL: Avoid Infinite Loops
+
+**NEVER run the same command repeatedly if it returns empty output!**
+
+- `tsc --noEmit` returns EMPTY output when there are NO ERRORS (this is success!)
+- `pnpm test` with no test files returns empty or warning (this is OK)
+- Empty output ≠ failure. Check exit code instead.
+
+**Max iterations per verification command: 1**
+If a command succeeds (exit 0), move on. Do not retry.
+
 ## When to Use
 
 - After `/bmad:sprint-planning` created task queue
