@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    /* Strict Type-Checking */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Emit */
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noEmit": true,
+
+    /* Interop */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    /* Path Aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["packages/shared/src/*"],
+      "@api-types/*": ["packages/api-types/src/*"],
+      "@features/*": ["apps/backend/src/features/*"],
+      "@app/*": ["apps/frontend/src/app/*"],
+      "@pages/*": ["apps/frontend/src/pages/*"],
+      "@widgets/*": ["apps/frontend/src/widgets/*"],
+      "@entities/*": ["apps/frontend/src/entities/*"],
+      "@frontend-features/*": ["apps/frontend/src/features/*"],
+      "@frontend-shared/*": ["apps/frontend/src/shared/*"]
+    },
+
+    /* Skip */
+    "skipLibCheck": true
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "dist", "build", "coverage", ".turbo"]
+}

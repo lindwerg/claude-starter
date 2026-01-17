@@ -1,0 +1,16 @@
+{
+  "name": "claude-hooks",
+  "version": "1.0.0",
+  "description": "Claude Code hooks for project automation",
+  "type": "module",
+  "scripts": {
+    "build": "bash build.sh",
+    "build:watch": "esbuild src/*.ts --bundle --platform=node --format=esm --outdir=dist --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.0"
+  }
+}

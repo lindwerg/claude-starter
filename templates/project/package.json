@@ -1,0 +1,63 @@
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Full-stack application with VSA backend and FSD frontend",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=@my-app/backend",
+    "dev:frontend": "turbo run dev --filter=@my-app/frontend",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:coverage": "vitest run --coverage",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "type-check": "turbo run type-check",
+    "validate:all": "pnpm validate:vsa && pnpm validate:fsd && pnpm validate:api",
+    "validate:vsa": "node scripts/validate-vsa.js",
+    "validate:fsd": "node scripts/validate-fsd.js",
+    "validate:api": "npx @redocly/cli lint apps/backend/src/openapi.yaml",
+    "generate:types": "npx openapi-typescript apps/backend/src/openapi.yaml -o packages/api-types/src/generated.ts",
+    "db:generate": "turbo run db:generate --filter=@my-app/backend",
+    "db:migrate": "turbo run db:migrate --filter=@my-app/backend",
+    "db:push": "turbo run db:push --filter=@my-app/backend",
+    "db:seed": "turbo run db:seed --filter=@my-app/backend",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "packageManager": "pnpm@8.14.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ]
+  }
+}
