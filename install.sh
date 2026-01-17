@@ -4,7 +4,7 @@ set -e
 # Claude Starter Kit Installer
 # Installs skills, rules, hooks, commands, and agents to ~/.claude/
 
-REPO_URL="https://github.com/kirill/claude-starter"
+REPO_URL="https://github.com/lindwerg/claude-starter"
 CLAUDE_DIR="$HOME/.claude"
 BACKUP_DIR="$HOME/.claude-backup-$(date +%Y%m%d%H%M%S)"
 TEMP_DIR=""

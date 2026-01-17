@@ -13,7 +13,7 @@ Transform Claude Code into a fully autonomous development system with specialize
 ## Quick Start
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kirill/claude-starter/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
 ```
 
 After installation, restart Claude Code and run:
@@ -371,7 +371,7 @@ docker --version  # >= 24.x (optional)
 ### One-Line Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kirill/claude-starter/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
 ```
 
 ### Manual Install
@@ -385,7 +385,7 @@ cd claude-starter
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/kirill/claude-starter/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.ps1 | iex
 ```
 
 ### What Gets Installed
