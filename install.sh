@@ -152,12 +152,9 @@ merge_mcp() {
   if command -v jq &> /dev/null && [ -f "$dst_mcp" ]; then
     log_info "Merging mcp_config.json (preserving your existing servers)..."
 
-    # Merge mcpServers objects
-    jq -s '
-      {
-        mcpServers: (.[0].mcpServers // {}) * (.[1].mcpServers // {})
-      }
-    ' "$src_mcp" "$dst_mcp" > "$CLAUDE_DIR/mcp_config.merged.json"
+    # Merge mcpServers objects (existing takes precedence)
+    jq -s '.[0].mcpServers as $src | .[1].mcpServers as $dst | {mcpServers: ($src + $dst)}' \
+      "$src_mcp" "$dst_mcp" > "$CLAUDE_DIR/mcp_config.merged.json"
 
     mv "$CLAUDE_DIR/mcp_config.merged.json" "$dst_mcp"
     log_info "MCP config merged successfully"
