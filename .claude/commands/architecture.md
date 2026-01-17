@@ -749,6 +749,55 @@ pnpm test:frontend    # Frontend only
 - **Generate types**: `pnpm generate-api-types`
 - **Validation**: Backend validates requests against spec
 
+## Code Quality
+
+**Linting:** ESLint v9 (Flat Config) + TypeScript-ESLint
+**Formatting:** Prettier
+
+**Commands:**
+```bash
+pnpm lint          # Check for errors
+pnpm lint:fix      # Fix auto-fixable issues
+pnpm format        # Format all files
+pnpm format:check  # Check formatting (CI)
+```
+
+**Config files:**
+- `eslint.config.mjs` — ESLint rules
+- `.prettierrc` — Prettier config
+
+## Git Hooks
+
+Pre-commit hooks via Husky + lint-staged:
+- ESLint fixes on staged TS/TSX files
+- Prettier formats all staged files
+
+**Config files:**
+- `.husky/pre-commit` — Hook script
+- `.lintstagedrc` — Staged file rules
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in values:
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+**Required variables:**
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_SECRET` — Auth token secret (generate: `openssl rand -base64 32`)
+- `VITE_API_URL` — Backend API URL for frontend
+
+## CI/CD
+
+GitHub Actions runs on push/PR to main:
+1. **Lint** — ESLint + Prettier check
+2. **Test** — Vitest
+3. **Build** — Production build (after lint+test pass)
+
+**Config:** `.github/workflows/ci.yml`
+
 ## Related Documents
 
 - Architecture: `docs/architecture-{{project_name}}-{{date}}.md`
@@ -926,6 +975,304 @@ describe('formatDate', () => {
 
 ---
 
+### Part 15: Setup Code Quality Tools (ESLint + Prettier) (MANDATORY)
+
+> **CRITICAL**: After testing infrastructure is ready, setup linting and formatting tools.
+
+**What to create:**
+
+1. `eslint.config.mjs` (root) — ESLint v9 Flat Config
+2. `.prettierrc` — Prettier config
+3. `.prettierignore` — Files to ignore
+
+**eslint.config.mjs:**
+```javascript
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+
+export default tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ['frontend/**/*.{ts,tsx}'],
+    plugins: {
+      react: reactPlugin,
+      'react-hooks': reactHooksPlugin,
+    },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+    settings: {
+      react: { version: 'detect' },
+    },
+  },
+  {
+    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**'],
+  }
+);
+```
+
+**.prettierrc:**
+```json
+{
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 100
+}
+```
+
+**.prettierignore:**
+```
+dist/
+node_modules/
+coverage/
+*.min.js
+pnpm-lock.yaml
+```
+
+**Dependencies to add (root package.json):**
+```json
+{
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "prettier": "^3.4.0"
+  }
+}
+```
+
+**Scripts to add (root package.json):**
+```json
+{
+  "lint": "eslint .",
+  "lint:fix": "eslint . --fix",
+  "format": "prettier --write .",
+  "format:check": "prettier --check ."
+}
+```
+
+**Process:**
+1. Create config files using Write tool
+2. Update root package.json with dependencies and scripts
+3. Run `pnpm install`
+4. Run `pnpm lint` to verify setup
+5. Confirm creation:
+   ```
+   ✓ Code quality tools setup!
+
+   Created:
+   - eslint.config.mjs
+   - .prettierrc
+   - .prettierignore
+
+   Commands:
+   - pnpm lint       # Check for errors
+   - pnpm lint:fix   # Auto-fix issues
+   - pnpm format     # Format all files
+   ```
+
+---
+
+### Part 16: Setup Git Hooks (Husky + lint-staged) (MANDATORY)
+
+> **CRITICAL**: Setup pre-commit hooks to enforce code quality on every commit.
+
+**What to create:**
+
+1. `.husky/pre-commit` — Pre-commit hook
+2. `.lintstagedrc` — lint-staged config
+
+**Setup commands to run:**
+```bash
+pnpm add -D husky lint-staged
+pnpm exec husky init
+```
+
+**.husky/pre-commit:**
+```bash
+pnpm lint-staged
+```
+
+**.lintstagedrc:**
+```json
+{
+  "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
+  "*.{json,md,yml,yaml}": ["prettier --write"]
+}
+```
+
+**Dependencies (added via command above):**
+- `husky`
+- `lint-staged`
+
+**Process:**
+1. Run husky setup commands
+2. Create .lintstagedrc config
+3. Test by staging a file and committing
+4. Confirm creation:
+   ```
+   ✓ Git hooks setup!
+
+   Created:
+   - .husky/pre-commit
+   - .lintstagedrc
+
+   Pre-commit will now:
+   - Run ESLint --fix on staged TS/TSX
+   - Run Prettier on staged files
+   ```
+
+---
+
+### Part 17: Environment Templates (MANDATORY)
+
+> **CRITICAL**: Create .env.example files so developers know what environment variables are needed.
+
+**What to create:**
+
+1. `backend/.env.example`
+2. `frontend/.env.example`
+
+**backend/.env.example:**
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname?schema=public"
+
+# Server
+PORT=3001
+NODE_ENV=development
+
+# JWT (generate: openssl rand -base64 32)
+JWT_SECRET=your-secret-here
+JWT_EXPIRES_IN=7d
+
+# CORS
+CORS_ORIGIN=http://localhost:5173
+
+# Optional: External Services
+# REDIS_URL=redis://localhost:6379
+# SMTP_HOST=smtp.example.com
+```
+
+**frontend/.env.example:**
+```env
+# API
+VITE_API_URL=http://localhost:3001/api
+
+# Optional: Feature Flags
+# VITE_ENABLE_ANALYTICS=false
+```
+
+**Process:**
+1. Create .env.example files using Write tool
+2. Confirm creation:
+   ```
+   ✓ Environment templates created!
+
+   Created:
+   - backend/.env.example
+   - frontend/.env.example
+
+   Developers should:
+   1. cp backend/.env.example backend/.env
+   2. cp frontend/.env.example frontend/.env
+   3. Fill in actual values
+   ```
+
+---
+
+### Part 18: Setup CI/CD (GitHub Actions) (MANDATORY)
+
+> **CRITICAL**: Create CI pipeline to run lint, tests, and build on every push/PR.
+
+**What to create:**
+
+1. `.github/workflows/ci.yml`
+
+**.github/workflows/ci.yml:**
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:run
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+```
+
+**Process:**
+1. Create .github/workflows directory
+2. Create ci.yml using Write tool
+3. Confirm creation:
+   ```
+   ✓ CI/CD pipeline created!
+
+   Created:
+   - .github/workflows/ci.yml
+
+   Pipeline runs on push/PR:
+   1. Lint check (ESLint + Prettier)
+   2. Tests (Vitest)
+   3. Build (after lint+test pass)
+   ```
+
+---
+
 ## Update Status
 
 Per `helpers.md#Update-Workflow-Status`:
@@ -940,6 +1287,10 @@ Per `helpers.md#Update-Workflow-Status`:
 ✓ Architecture complete!
 ✓ CLAUDE.md generated for project memory!
 ✓ Testing infrastructure setup!
+✓ Code quality tools configured (ESLint + Prettier)!
+✓ Git hooks configured (Husky + lint-staged)!
+✓ Environment templates created!
+✓ CI/CD pipeline created (GitHub Actions)!
 
 Next: Sprint Planning (Phase 4)
 Run /sprint-planning to:
@@ -954,10 +1305,18 @@ You now have complete planning documentation:
 ✓ Architecture
 ✓ CLAUDE.md (project memory)
 ✓ Testing setup (vitest + examples)
+✓ Code quality (ESLint + Prettier)
+✓ Git hooks (pre-commit validation)
+✓ Environment templates (.env.example)
+✓ CI/CD pipeline (GitHub Actions)
 
 Implementation teams have everything needed to build successfully!
 Claude Code will automatically load CLAUDE.md at session start.
-Run 'pnpm test' to verify testing works.
+
+Quick verification:
+- pnpm test        # Run tests
+- pnpm lint        # Check linting
+- pnpm format      # Format code
 ```
 
 ---
@@ -1006,7 +1365,15 @@ Run 'pnpm test' to verify testing works.
 ## Notes for LLMs
 
 - Maintain a thoughtful, principled persona
-- Use TodoWrite to track 12 architecture parts
+- Use TodoWrite to track all 18 architecture parts:
+  - Parts 1-12: Architecture design
+  - Part 13: Generate CLAUDE.md
+  - Part 14: Testing infrastructure
+  - Part 15: Code quality (ESLint + Prettier)
+  - Part 16: Git hooks (Husky)
+  - Part 17: Environment templates
+  - Part 18: CI/CD pipeline
+- Use Context7 MCP in Part 3.5 to research best practices
 - Systematically cover ALL FRs and NFRs - don't skip any
 - Apply appropriate patterns based on project level
 - Document trade-offs - no perfect solutions exist
