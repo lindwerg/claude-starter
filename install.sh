@@ -198,7 +198,22 @@ install_claude_md() {
   fi
 }
 
-# 9. Cleanup
+# 9. Install BMAD Method
+install_bmad() {
+  local bmad_dir="$CLAUDE_DIR/skills/bmad"
+  local bmad_installer="$bmad_dir/install-v6.sh"
+
+  if [ -f "$bmad_installer" ]; then
+    log_info "Installing BMAD Method v6..."
+    cd "$bmad_dir" && bash install-v6.sh
+    cd - > /dev/null
+    log_info "BMAD Method installed"
+  else
+    log_warn "BMAD installer not found, skipping"
+  fi
+}
+
+# 10. Cleanup
 cleanup() {
   if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
     rm -rf "$TEMP_DIR"
@@ -227,11 +242,17 @@ print_success() {
   echo ""
   echo "  Restart Claude Code to apply changes."
   echo ""
-  echo "  Quick Start:"
+  echo "  Quick Start (New Project):"
   echo "    mkdir my-app && cd my-app"
-  echo "    /init-project"
-  echo "    /workflow-init"
-  echo "    /ralph-loop"
+  echo "    /init-project              # FSD + VSA structure"
+  echo "    /ralph-loop                # Autonomous dev loop"
+  echo ""
+  echo "  BMAD Workflow (Architecture):"
+  echo "    /workflow-init             # Init BMAD in project"
+  echo "    /product-brief             # Business requirements"
+  echo "    /prd                       # Product spec"
+  echo "    /architecture              # System design"
+  echo "    /sprint-planning           # Break into stories"
   echo ""
   echo "  Installed to: $CLAUDE_DIR"
   if [ -f "$HOME/.claude-starter-last-backup" ]; then
@@ -251,6 +272,7 @@ main() {
   merge_mcp
   install_templates
   install_claude_md
+  install_bmad
   print_success
 }
 
