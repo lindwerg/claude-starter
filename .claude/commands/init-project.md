@@ -60,12 +60,14 @@ frontend/
 │   ├── widgets/
 │   ├── features/
 │   ├── entities/
-│   └── shared/
-│       ├── ui/
-│       ├── lib/
-│       ├── hooks/
-│       ├── api/
-│       └── types/
+│   ├── shared/
+│   │   ├── ui/
+│   │   ├── lib/
+│   │   ├── hooks/
+│   │   ├── api/
+│   │   │   └── client.ts     # API client (body: null, not undefined!)
+│   │   └── types/
+│   └── vite-env.d.ts         # ОБЯЗАТЕЛЬНО для import.meta.env
 ├── public/
 ├── package.json
 ├── tsconfig.json
@@ -103,16 +105,47 @@ git add .
 git commit -m "chore: initial project setup"
 ```
 
-### 6. Создать .env.example
+### 6. Создать .env.example и .env
+
+**ВАЖНО:** Использовать порт 5433 для PostgreSQL (5432 часто занят)!
 
 ```env
 # Backend
 NODE_ENV=development
-PORT=3000
-DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+PORT=3001
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/myapp
+CORS_ORIGIN=http://localhost:5173
 
 # Frontend
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3001
+```
+
+После создания `.env.example` — **скопировать в `.env`**:
+```bash
+cp backend/.env.example backend/.env
+```
+
+### 6.1. Создать vite-env.d.ts (ОБЯЗАТЕЛЬНО!)
+
+Файл `frontend/src/vite-env.d.ts`:
+```typescript
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+```
+
+### 6.2. API Client — правильная типизация body
+
+В `frontend/src/shared/api/client.ts` для POST/PUT:
+```typescript
+// ПРАВИЛЬНО — используй null, не undefined
+const body = data !== undefined ? JSON.stringify(data) : null;
 ```
 
 ### 7. Настроить Docker
