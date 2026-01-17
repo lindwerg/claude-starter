@@ -261,6 +261,18 @@ print_success() {
   echo ""
 }
 
+# 11. Override BMAD commands with our custom versions (FSD+VSA)
+install_custom_commands() {
+  log_info "Installing custom commands (FSD+VSA overrides)..."
+
+  # Copy our architecture.md AFTER bmad to override it
+  local src_arch="$TEMP_DIR/claude-starter/.claude/commands/architecture.md"
+  if [ -f "$src_arch" ]; then
+    cp -f "$src_arch" "$CLAUDE_DIR/commands/architecture.md"
+    log_info "Custom /architecture with FSD+VSA installed"
+  fi
+}
+
 # Main
 main() {
   print_banner
@@ -273,6 +285,7 @@ main() {
   install_templates
   install_claude_md
   install_bmad
+  install_custom_commands  # AFTER bmad to override
   print_success
 }
 
