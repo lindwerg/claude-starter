@@ -614,6 +614,135 @@ Document major trade-offs:
 
 ---
 
+### Part 13: Generate CLAUDE.md for Project (MANDATORY)
+
+> **CRITICAL**: After architecture is approved, generate a `CLAUDE.md` file that serves as persistent memory for the project. This file is read by Claude Code at the start of every session.
+
+**Why this matters:**
+- New sessions don't know the tech stack, commands, or architecture
+- CLAUDE.md provides instant context without re-explaining
+- It's the "single source of truth" for project conventions
+
+**Template to generate:**
+
+```markdown
+# {{project_name}}
+
+> {{project_description}}
+
+## Tech Stack
+
+- **Frontend**: {{frontend_stack}}
+- **Backend**: {{backend_stack}}
+- **Database**: {{database_stack}}
+- **Infrastructure**: {{infrastructure_stack}}
+
+## Architecture
+
+- **Frontend**: FSD (Feature-Sliced Design)
+  ```
+  src/app/ → pages/ → widgets/ → features/ → entities/ → shared/
+  ```
+- **Backend**: VSA (Vertical Slice Architecture)
+  ```
+  src/features/{feature}/{use-case}/ → controller.ts, service.ts, dto.ts
+  ```
+
+## Commands
+
+```bash
+# Development
+pnpm dev              # Start all services
+pnpm dev:backend      # Backend only
+pnpm dev:frontend     # Frontend only
+
+# Database
+pnpm db:migrate       # Run Prisma migrations
+pnpm db:studio        # Open Prisma Studio
+
+# Testing
+pnpm test             # Run all tests
+pnpm test:coverage    # Run with coverage
+
+# Code quality
+pnpm lint             # ESLint check
+pnpm format           # Prettier format
+pnpm typecheck        # TypeScript check
+
+# Build
+pnpm build            # Production build
+```
+
+## Testing Strategy
+
+- **70% Integration** — API endpoints, React components
+- **20% Unit** — Pure functions, validators
+- **10% E2E** — Critical user flows (Playwright)
+- **Coverage**: 80% minimum
+
+## File Structure
+
+```
+{{project_name}}/
+├── backend/
+│   ├── src/
+│   │   ├── features/       # VSA slices
+│   │   └── shared/         # Middleware, utils
+│   ├── prisma/
+│   └── vitest.config.ts
+├── frontend/
+│   ├── src/
+│   │   ├── app/           # FSD: Providers, routing
+│   │   ├── pages/         # FSD: Route pages
+│   │   ├── widgets/       # FSD: Standalone blocks
+│   │   ├── features/      # FSD: Business features
+│   │   ├── entities/      # FSD: Business entities
+│   │   └── shared/        # FSD: UI, hooks, api
+│   └── vitest.config.ts
+├── docs/
+│   ├── architecture-*.md
+│   └── prd-*.md
+├── docker-compose.yml
+└── openapi.yaml
+```
+
+## Code Standards
+
+- TypeScript strict mode (no `any`, no `as unknown as`)
+- Zod validation for all external inputs
+- OpenAPI-first: spec before implementation
+- Imports only through `index.ts` (public API)
+- FSD import rules: layers can only import from layers BELOW
+- VSA: no cross-feature imports (only through shared/)
+
+## API Contract
+
+- **Source of truth**: `openapi.yaml`
+- **Generate types**: `pnpm generate-api-types`
+- **Validation**: Backend validates requests against spec
+
+## Related Documents
+
+- Architecture: `docs/architecture-{{project_name}}-{{date}}.md`
+- PRD: `docs/prd-{{project_name}}-{{date}}.md`
+```
+
+**Process:**
+1. Use stored variables from Parts 1-12
+2. Fill template with actual project values
+3. Write to project root: `{project_root}/CLAUDE.md`
+4. Confirm creation:
+   ```
+   ✓ CLAUDE.md generated!
+
+   Location: {project_root}/CLAUDE.md
+   Sections: Tech Stack, Architecture, Commands, Testing, File Structure, Code Standards
+   ```
+
+**Store as:** `{{claude_md_path}}`
+
+---
+
 ## Update Status
 
 Per `helpers.md#Update-Workflow-Status`:
@@ -626,6 +755,7 @@ Per `helpers.md#Update-Workflow-Status`:
 
 ```
 ✓ Architecture complete!
+✓ CLAUDE.md generated for project memory!
 
 Next: Sprint Planning (Phase 4)
 Run /sprint-planning to:
@@ -638,8 +768,10 @@ You now have complete planning documentation:
 ✓ Product Brief
 ✓ PRD
 ✓ Architecture
+✓ CLAUDE.md (project memory)
 
 Implementation teams have everything needed to build successfully!
+Claude Code will automatically load CLAUDE.md at session start.
 ```
 
 ---
