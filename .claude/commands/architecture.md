@@ -715,6 +715,34 @@ pnpm build            # Production build
 - FSD import rules: layers can only import from layers BELOW
 - VSA: no cross-feature imports (only through shared/)
 
+## Testing
+
+**Strategy:** Inverted Test Pyramid
+- **70% Integration** — API endpoints, React components
+- **20% Unit** — Pure functions, validators
+- **10% E2E** — Critical user flows (Playwright)
+
+**Coverage:** 80% minimum
+
+**Config Files:**
+- Backend: `backend/vitest.config.ts`
+- Frontend: `frontend/vitest.config.ts`
+- Setup: `frontend/src/test/setup.ts`
+
+**Commands:**
+```bash
+pnpm test             # Run all tests (watch mode)
+pnpm test:run         # Run once
+pnpm test:coverage    # Run with coverage report
+pnpm test:backend     # Backend only
+pnpm test:frontend    # Frontend only
+```
+
+**Writing Tests:**
+- Test files: `*.test.ts` or `*.spec.ts`
+- Co-locate with source: `Button.tsx` → `Button.test.tsx`
+- Integration tests: Use `supertest` for API, `@testing-library/react` for UI
+
 ## API Contract
 
 - **Source of truth**: `openapi.yaml`
@@ -743,6 +771,161 @@ pnpm build            # Production build
 
 ---
 
+### Part 14: Setup Testing Infrastructure (MANDATORY)
+
+> **CRITICAL**: After CLAUDE.md is created, setup testing infrastructure for the project.
+
+**What to create:**
+
+1. **Backend Vitest Config** (`backend/vitest.config.ts`)
+2. **Frontend Vitest Config** (`frontend/vitest.config.ts`)
+3. **Test Setup File** (`frontend/src/test/setup.ts`)
+4. **Example Tests** (health check + utility)
+5. **Update package.json** with test scripts and dependencies
+
+**Backend vitest.config.ts:**
+```typescript
+import { defineConfig } from 'vitest/config';
+import path from 'path';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: ['node_modules', 'dist', '**/*.d.ts'],
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+});
+```
+
+**Frontend vitest.config.ts:**
+```typescript
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.tsx', 'src/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: ['node_modules', 'dist', '**/*.d.ts'],
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+});
+```
+
+**frontend/src/test/setup.ts:**
+```typescript
+import '@testing-library/jest-dom/vitest';
+```
+
+**Dependencies to add:**
+
+Backend devDependencies:
+- `vitest: ^2.1.8`
+- `@vitest/coverage-v8: ^2.1.8`
+- `supertest: ^7.0.0`
+- `@types/supertest: ^6.0.2`
+
+Frontend devDependencies:
+- `vitest: ^2.1.8`
+- `@vitest/coverage-v8: ^2.1.8`
+- `@testing-library/react: ^16.1.0`
+- `@testing-library/jest-dom: ^6.6.3`
+- `jsdom: ^25.0.1`
+
+**Scripts to add:**
+
+Root package.json:
+```json
+"test": "pnpm -r test",
+"test:run": "pnpm -r test:run",
+"test:coverage": "pnpm -r test:coverage",
+"test:backend": "pnpm --filter backend test",
+"test:frontend": "pnpm --filter frontend test"
+```
+
+Backend/Frontend package.json:
+```json
+"test": "vitest",
+"test:run": "vitest run",
+"test:coverage": "vitest run --coverage"
+```
+
+**Example backend test (backend/src/features/health/health.test.ts):**
+```typescript
+import { describe, it, expect } from 'vitest';
+import request from 'supertest';
+import { app } from '../../app';
+
+describe('Health Check', () => {
+  it('GET /api/health returns healthy status', async () => {
+    const response = await request(app).get('/api/health');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('status', 'healthy');
+  });
+});
+```
+
+**Example frontend test (frontend/src/shared/lib/format.test.ts):**
+```typescript
+import { describe, it, expect } from 'vitest';
+
+export function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+describe('formatDate', () => {
+  it('formats date to YYYY-MM-DD', () => {
+    const date = new Date('2024-01-15T12:00:00Z');
+    expect(formatDate(date)).toBe('2024-01-15');
+  });
+});
+```
+
+**Process:**
+1. Create vitest config files using Write tool
+2. Create test setup file
+3. Update package.json files with scripts and dependencies
+4. Create example tests
+5. Run `pnpm install` to install new dependencies
+6. Run `pnpm test` to verify setup works
+7. Confirm creation:
+   ```
+   ✓ Testing infrastructure setup!
+
+   Created:
+   - backend/vitest.config.ts
+   - frontend/vitest.config.ts
+   - frontend/src/test/setup.ts
+   - Example tests
+
+   Run tests: pnpm test
+   ```
+
+---
+
 ## Update Status
 
 Per `helpers.md#Update-Workflow-Status`:
@@ -756,6 +939,7 @@ Per `helpers.md#Update-Workflow-Status`:
 ```
 ✓ Architecture complete!
 ✓ CLAUDE.md generated for project memory!
+✓ Testing infrastructure setup!
 
 Next: Sprint Planning (Phase 4)
 Run /sprint-planning to:
@@ -769,9 +953,11 @@ You now have complete planning documentation:
 ✓ PRD
 ✓ Architecture
 ✓ CLAUDE.md (project memory)
+✓ Testing setup (vitest + examples)
 
 Implementation teams have everything needed to build successfully!
 Claude Code will automatically load CLAUDE.md at session start.
+Run 'pnpm test' to verify testing works.
 ```
 
 ---
