@@ -37,59 +37,98 @@ You are the Scrum Master, executing the **Sprint Planning** workflow.
 
 ---
 
+## ⚠️ MANDATORY CHECKPOINTS — READ THIS FIRST ⚠️
+
+**This workflow has 2 MANDATORY outputs. You MUST create BOTH or the workflow is FAILED:**
+
+### MANDATORY OUTPUT 1: No Infrastructure Stories if Architecture Exists
+```bash
+# RUN THIS COMMAND FIRST:
+ls -la backend/src/ frontend/src/ prisma/schema.prisma docker-compose.yml 2>/dev/null
+```
+- **IF files exist** → Architecture was already run
+- **IF Architecture exists** → STORY-001 MUST be a BUSINESS FEATURE (e.g., "TMA Authentication", "Data Pipeline")
+- **FORBIDDEN if Architecture exists:** "Project Setup", "Database Schema", "Backend Skeleton", "CI/CD Pipeline", "Docker Setup"
+- **VIOLATION = WORKFLOW FAILURE**
+
+### MANDATORY OUTPUT 2: Task Queue File
+```
+.bmad/task-queue.yaml MUST be created at the end
+```
+- **NO task-queue.yaml = WORKFLOW FAILURE**
+- Ralph Loop CANNOT work without this file
+- Contains atomic tasks (30-60 min each) for every Sprint 1 story
+
+---
+
 ## Sprint Planning Process
 
-Use TodoWrite to track: Pre-flight → Check Architecture → Extract Requirements → Break Into Stories → Decompose Tasks → Estimate Stories → Calculate Capacity → Allocate to Sprints → Define Goals → Generate Plan → Generate Task Queue → Update Status
+**Use TodoWrite with EXACTLY these steps:**
+```
+1. Pre-flight: Load documents
+2. CHECK ARCHITECTURE (MANDATORY!)
+3. Extract requirements from PRD
+4. Break epics into stories (NO INFRA if arch exists!)
+5. Decompose stories into atomic tasks
+6. Estimate story points
+7. Calculate team capacity
+8. Allocate stories to sprints
+9. Define sprint goals
+10. Generate sprint-plan.md
+11. Generate task-queue.yaml (MANDATORY!)
+12. Update sprint-status.yaml
+```
 
 Approach: **Organized, pragmatic, team-focused.**
 
 ---
 
-### Part 0.5: Check Architecture Output (CRITICAL!)
+### Part 0.5: Check Architecture Output — MANDATORY FIRST STEP!
 
-**Before creating stories, check what `/architecture` already created:**
+**⚠️ YOU MUST RUN THIS BASH COMMAND BEFORE CREATING ANY STORIES:**
 
-1. **Check if project skeleton exists:**
-   ```bash
-   ls -la backend/src/ frontend/src/ prisma/ docker-compose.yml 2>/dev/null
-   ```
+```bash
+ls -la backend/src/ frontend/src/ prisma/schema.prisma docker-compose.yml openapi.yaml 2>/dev/null && echo "ARCHITECTURE_EXISTS=true" || echo "ARCHITECTURE_EXISTS=false"
+```
 
-2. **If architecture was run (skeleton exists):**
-   - ❌ DON'T create "Project Setup" stories
-   - ❌ DON'T create "Backend Skeleton" stories
-   - ❌ DON'T create "Frontend Skeleton" stories
-   - ❌ DON'T create "Database Schema Setup" stories (schema exists!)
-   - ❌ DON'T create "Docker Setup" stories
-   - ✅ DO start with FIRST BUSINESS FEATURE from PRD
+**DECISION TREE:**
 
-3. **Infrastructure already created by /architecture:**
-   | Component | Created by Architecture | DON'T duplicate |
-   |-----------|------------------------|-----------------|
-   | `backend/src/` | VSA skeleton | Backend setup stories |
-   | `frontend/src/` | FSD skeleton | Frontend setup stories |
-   | `prisma/schema.prisma` | Base schema | DB schema stories |
-   | `docker-compose.yml` | Docker config | Docker stories |
-   | `vitest.config.ts` | Test config | Test setup stories |
-   | `eslint.config.mjs` | Linting | Tooling stories |
-   | `openapi.yaml` | API contract | API setup stories |
+```
+IF output shows files exist (ARCHITECTURE_EXISTS=true):
+│
+├── ✅ ALLOWED first stories:
+│   • STORY-001: TMA Authentication
+│   • STORY-001: Data Pipeline Integration
+│   • STORY-001: User Registration API
+│   • STORY-001: [Any BUSINESS FEATURE from PRD]
+│
+└── ❌ FORBIDDEN first stories (VIOLATION = RESTART WORKFLOW):
+    • "Project Setup"
+    • "Database Schema"
+    • "Backend Skeleton"
+    • "Frontend Setup"
+    • "CI/CD Pipeline"
+    • "Docker Setup"
+    • "Monitoring Setup"
+    • "API Documentation"
+    • Any "STORY-INF-XXX"
 
-4. **Correct first story examples:**
+IF output shows "No such file" (ARCHITECTURE_EXISTS=false):
+│
+└── ✅ Infrastructure stories ARE allowed
+```
 
-   **If architecture exists:**
-   - STORY-001: TMA Authentication (first real feature!)
-   - STORY-002: User Profile API
-   - STORY-003: Data Pipeline Worker
+**WHY THIS MATTERS:**
+- `/architecture` already created: backend/src/, frontend/src/, prisma/schema.prisma, docker-compose.yml, openapi.yaml, vitest.config.ts, eslint.config.mjs
+- Creating "Database Schema" story when schema.prisma exists = DUPLICATE WORK
+- Creating "Project Setup" when VSA/FSD skeleton exists = WASTED SPRINT
 
-   **If NO architecture (greenfield):**
-   - STORY-001: Project Setup
-   - STORY-002: Database Schema
-   - STORY-003: Backend Skeleton
-
-**Store result:**
-```yaml
-architecture_exists: true|false
-skip_infrastructure_stories: true|false
-first_story_type: "business_feature"|"infrastructure"
+**SELF-CHECK before Part 1:**
+```
+□ I ran the ls command above
+□ I know if ARCHITECTURE_EXISTS=true or false
+□ If true, my STORY-001 will be: _________________ (must be business feature!)
+□ If true, I will NOT create any STORY-INF-XXX stories
 ```
 
 ---
@@ -665,9 +704,11 @@ team:
 
 ---
 
-### Part 10.5: Generate Task Queue for Ralph Loop
+### Part 10.5: Generate Task Queue for Ralph Loop — MANDATORY!
 
-**Create `.bmad/task-queue.yaml` for autonomous execution:**
+**⚠️ THIS STEP IS NOT OPTIONAL. You MUST create `.bmad/task-queue.yaml` or workflow FAILS.**
+
+**Ralph Loop CANNOT work without this file. No task-queue = No autonomous execution.**
 
 1. **For each story in Sprint 1:**
    - Use decomposition from Part 2.5
@@ -750,6 +791,24 @@ team:
 - Resume after interruption or failure
 - Auto-transition between tasks
 - Report detailed progress
+
+---
+
+## ⚠️ FINAL VALIDATION — DO NOT SKIP
+
+**Before showing summary, verify BOTH mandatory outputs:**
+
+```bash
+# Check 1: task-queue.yaml exists
+ls -la .bmad/task-queue.yaml && echo "✅ task-queue.yaml EXISTS" || echo "❌ MISSING task-queue.yaml - CREATE IT NOW!"
+
+# Check 2: No infrastructure stories if architecture exists
+# (You should have verified this in Part 0.5)
+```
+
+**IF task-queue.yaml is missing:** Go back to Part 10.5 and create it NOW.
+
+**IF STORY-001 is infrastructure when architecture exists:** Your workflow FAILED. The plan is incorrect.
 
 ---
 
@@ -912,24 +971,48 @@ Next: Begin Sprint 1
 
 ---
 
-## Notes for LLMs
+## Notes for LLMs — READ CAREFULLY
 
+### ⚠️ TWO NON-NEGOTIABLE REQUIREMENTS:
+
+**REQUIREMENT 1: Check Architecture FIRST (Part 0.5)**
+```
+RUN: ls -la backend/src/ frontend/src/ prisma/schema.prisma 2>/dev/null
+IF files exist → STORY-001 = BUSINESS FEATURE (TMA Auth, Data Pipeline, etc.)
+IF files exist → NO "Project Setup", "Database Schema", "CI/CD Pipeline" stories
+VIOLATION = WORKFLOW FAILURE
+```
+
+**REQUIREMENT 2: Create task-queue.yaml (Part 10.5)**
+```
+FILE: .bmad/task-queue.yaml MUST EXIST at workflow end
+NO FILE = WORKFLOW FAILURE
+Ralph Loop CANNOT work without this file
+```
+
+### Standard Guidelines:
 - Maintain approach (organized, pragmatic, team-focused)
-- Use TodoWrite to track 11 sprint planning parts (including 2.5 and 10.5)
+- Use TodoWrite with 12 steps (including mandatory checkpoints)
 - Break stories systematically - don't skip any FRs
 - Apply sizing guidelines strictly (no stories >8 points)
-- **CRITICAL: Decompose stories into atomic tasks (30-60 min each) in Part 2.5**
+- Decompose stories into atomic tasks (30-60 min each) in Part 2.5
 - Calculate realistic capacity based on team size and experience
 - Create traceability tables to ensure coverage
-- Reference helpers.md for all common operations
-- Initialize sprint status YAML for tracking
-- **CRITICAL: Generate task-queue.yaml in Part 10.5 for Ralph Loop**
-- Recommend /ralph-loop for autonomous execution
 
-**Task Queue is KEY:**
-- Without task queue, Ralph Loop cannot work autonomously
-- Each task must be 30-60 minutes max
-- Dependencies must be explicit (depends_on array)
-- Task types: api → backend → frontend → test
+### Task Queue Structure:
+- Each task: 30-60 minutes MAX
+- Dependencies explicit: `depends_on: ["TASK-001-A"]`
+- Task order: api → backend → frontend → test
+- Status: pending → in_progress → done | blocked
 
-**Remember:** Good sprint planning = smooth implementation. Poor planning = chaos, delays, and frustration. Take time to break stories down properly and estimate accurately. **Task queue enables Ralph to execute automatically!**
+### Self-Validation Checklist:
+```
+Before finishing, verify:
+□ Part 0.5: I ran `ls` command and know if architecture exists
+□ Part 0.5: If arch exists, STORY-001 is NOT infrastructure
+□ Part 10.5: .bmad/task-queue.yaml file was created
+□ Part 10.5: task-queue has atomic tasks (30-60 min each)
+□ Final: I ran validation bash commands
+```
+
+**REMEMBER:** If architecture skeleton exists and you created "Database Schema" or "Project Setup" as STORY-001, your plan is WRONG. Go back and fix it.
