@@ -1,8 +1,20 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": {"tools": ["Write"]},
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sprint-plan-validator.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
-        "matcher": ["Edit", "Write"],
+        "matcher": {"tools": ["Edit", "Write"]},
         "hooks": [
           {
             "type": "command",
@@ -16,18 +28,28 @@
         ]
       },
       {
-        "matcher": ["Write"],
+        "matcher": {"tools": ["Write"]},
         "hooks": [
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/auto-format.sh"
           }
         ]
+      },
+      {
+        "matcher": {"tools": ["Write"]},
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sprint-plan-post-validator.sh",
+            "timeout": 5000
+          }
+        ]
       }
     ],
     "SessionStart": [
       {
-        "matcher": ["resume", "compact", "clear"],
+        "matcher": {"tools": ["resume", "compact", "clear"]},
         "hooks": [
           {
             "type": "command",

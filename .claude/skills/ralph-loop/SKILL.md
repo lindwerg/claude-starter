@@ -236,9 +236,118 @@ limits:
   per_session: 100  # Max tasks per Ralph session
 ```
 
+## Sprint Auto-Continuation
+
+When all tasks in current sprint are DONE, Ralph automatically continues to next sprint:
+
+```
+Sprint 1 tasks ALL DONE
+        ↓
+Check sprint-plan.md for Sprint 2 stories
+        ↓
+Generate task-queue.yaml for Sprint 2
+        ↓
+Continue executing Sprint 2 tasks
+        ↓
+... repeat until ALL SPRINTS DONE
+```
+
+### Auto-Continuation Logic
+
+```
+after ALL tasks in task-queue.yaml are DONE:
+  1. Read current sprint number from task-queue.yaml
+  2. current_sprint = sprint + 1
+
+  3. Read docs/sprint-plan-*.md
+  4. Find stories assigned to Sprint {current_sprint}
+
+  5. If no stories for next sprint:
+     → PROJECT COMPLETE
+
+  6. Otherwise:
+     → Decompose stories into atomic tasks
+     → Write new task-queue.yaml (sprint: current_sprint)
+     → Continue loop with new tasks
+```
+
+### Implementation
+
+After all tasks done, check for next sprint:
+
+```bash
+# 1. Get current sprint number
+current_sprint=$(yq '.sprint' .bmad/task-queue.yaml)
+next_sprint=$((current_sprint + 1))
+
+# 2. Find sprint plan
+sprint_plan=$(ls docs/sprint-plan-*.md | head -1)
+
+# 3. Check if next sprint has stories
+# Look for "| Sprint ${next_sprint} |" in the stories table
+```
+
+**If next sprint has stories:**
+1. Extract stories for Sprint N+1 from sprint-plan.md
+2. Decompose each story into atomic tasks (30-60 min)
+3. Write new `.bmad/task-queue.yaml` with sprint: N+1
+4. Continue Ralph Loop
+
+**If no more sprints:**
+```xml
+<promise>PROJECT_COMPLETE</promise>
+<summary>
+All sprints completed!
+- Sprints: 5/5 done
+- Total stories: 42
+- Total tasks: 287
+- Total commits: 287
+</summary>
+```
+
+### Task Decomposition (inline)
+
+When generating task-queue for next sprint, follow same rules:
+
+| Task Type | Estimated | Example |
+|-----------|-----------|---------|
+| api | 30 min | Add endpoint to openapi.yaml |
+| backend | 30-45 min | Implement controller/service |
+| frontend | 30-45 min | Create component/hook |
+| test | 45-60 min | Write integration tests |
+
+**Dependency order:** api → backend → frontend → test
+
 ## Output Format
 
-**Success:**
+**Sprint Complete, Continuing:**
+```xml
+<promise>SPRINT_COMPLETE</promise>
+<summary>
+Sprint 1 completed!
+- Stories: 8/8 done
+- Tasks: 67/67 done
+</summary>
+<next_action>
+Generating task-queue for Sprint 2...
+Found 6 stories, creating 48 tasks.
+Continuing automatically.
+</next_action>
+```
+
+**All Sprints Complete:**
+```xml
+<promise>PROJECT_COMPLETE</promise>
+<summary>
+All sprints completed!
+- Sprints: 5/5
+- Stories: 42/42
+- Tasks: 287/287
+- Total time: 18h 45m
+</summary>
+```
+
+**Success (single sprint, legacy):**
 ```xml
 <promise>COMPLETE</promise>
 <summary>
@@ -363,6 +472,157 @@ Ralph updates continuity ledger automatically:
 ## See Also
 
 - `/bmad:sprint-planning` — Creates task queue
+- `/validate-sprint` — Validates + generates task queue
 - `/dev-story` — Manual story implementation
 - `/implement_task` — Single task execution
 - `thoughts/ledgers/` — State persistence
+
+---
+
+## CRITICAL: Fresh Context Pattern
+
+**Each task MUST be executed via subagent with FRESH context.**
+
+This prevents context drift that ruins long-running agents.
+
+```
+Ralph Orchestrator (main context - minimal)
+        │
+        ├── Task Agent: TASK-001-A (fresh context)
+        │       └── Reads task details
+        │       └── Implements
+        │       └── Returns receipt
+        │
+        ├── Task Agent: TASK-001-B (fresh context)
+        │       └── ...
+```
+
+### Subagent Prompt Template
+
+```markdown
+Execute atomic task from Ralph Loop.
+
+## Task
+- ID: {task.id}
+- Title: {task.title}
+- Type: {task.type}
+- Story: {task.story_id}
+
+## Required Outputs
+{task.outputs}
+
+## Acceptance Criteria
+{task.acceptance}
+
+## Completed Dependencies
+{task.depends_on}
+
+## Instructions
+1. Read relevant files (dependencies outputs)
+2. Implement following VSA/FSD architecture
+3. Verify acceptance criteria met
+4. Return completion evidence
+
+## Return Format
+\`\`\`yaml
+status: done  # or blocked
+files_created: [...]
+files_modified: [...]
+commit_message: "feat(scope): description"
+acceptance:
+  - criterion: "..."
+    passed: true
+\`\`\`
+```
+
+### Using Task Tool
+
+```typescript
+// In Ralph orchestrator
+const result = await Task({
+  subagent_type: task.type === 'backend' ? 'backend-agent' :
+                 task.type === 'frontend' ? 'frontend-agent' :
+                 task.type === 'test' ? 'test-agent' : 'general-purpose',
+  prompt: buildTaskPrompt(task),
+  description: `Execute ${task.id}`
+});
+```
+
+---
+
+## Re-anchoring (Start of Each Iteration)
+
+Before finding next task, ALWAYS re-anchor:
+
+```bash
+# 1. Read progress state
+cat .bmad/ralph-progress.yaml
+
+# 2. Read task queue
+cat .bmad/task-queue.yaml | yq '.summary'
+
+# 3. Check recent git activity
+git log --oneline -5
+
+# 4. Find next available task
+yq '.tasks[] | select(.status == "pending")' .bmad/task-queue.yaml | head -1
+```
+
+---
+
+## Progress Tracking
+
+**File:** `.bmad/ralph-progress.yaml`
+
+Updated after EACH task completion:
+
+```yaml
+session_id: "abc123"
+started_at: "2026-01-17T10:00:00Z"
+last_updated: "2026-01-17T12:30:00Z"
+
+current_sprint: 1
+current_task: "TASK-001-D"
+
+stats:
+  tasks_completed: 15
+  tasks_blocked: 0
+  tasks_remaining: 32
+
+history:
+  - task: "TASK-001-A"
+    status: "done"
+    duration_minutes: 25
+    commit: "abc1234"
+```
+
+---
+
+## Context Management
+
+### When to /clear
+
+- After every 10-15 tasks completed
+- When context usage > 70%
+- After sprint completion
+
+### How to Resume After /clear
+
+1. Ralph reads `.bmad/ralph-progress.yaml`
+2. Finds `current_task` or next pending
+3. Continues from that point
+
+**Progress file is the source of truth after /clear.**
+
+---
+
+## Stop Hook (Auto-Continue)
+
+Ralph uses Stop hook to automatically continue if tasks remain.
+
+**Hook checks:**
+1. Is there a completion marker? (PROJECT_COMPLETE, BLOCKED)
+2. Are there pending tasks in queue?
+3. If yes → continue with next task
+
+**This enables overnight autonomous execution.**
