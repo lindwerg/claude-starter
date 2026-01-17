@@ -39,9 +39,58 @@ You are the Scrum Master, executing the **Sprint Planning** workflow.
 
 ## Sprint Planning Process
 
-Use TodoWrite to track: Pre-flight → Extract Requirements → Break Into Stories → Estimate Stories → Calculate Capacity → Allocate to Sprints → Define Goals → Generate Plan → Update Status
+Use TodoWrite to track: Pre-flight → Check Architecture → Extract Requirements → Break Into Stories → Decompose Tasks → Estimate Stories → Calculate Capacity → Allocate to Sprints → Define Goals → Generate Plan → Generate Task Queue → Update Status
 
 Approach: **Organized, pragmatic, team-focused.**
+
+---
+
+### Part 0.5: Check Architecture Output (CRITICAL!)
+
+**Before creating stories, check what `/architecture` already created:**
+
+1. **Check if project skeleton exists:**
+   ```bash
+   ls -la backend/src/ frontend/src/ prisma/ docker-compose.yml 2>/dev/null
+   ```
+
+2. **If architecture was run (skeleton exists):**
+   - ❌ DON'T create "Project Setup" stories
+   - ❌ DON'T create "Backend Skeleton" stories
+   - ❌ DON'T create "Frontend Skeleton" stories
+   - ❌ DON'T create "Database Schema Setup" stories (schema exists!)
+   - ❌ DON'T create "Docker Setup" stories
+   - ✅ DO start with FIRST BUSINESS FEATURE from PRD
+
+3. **Infrastructure already created by /architecture:**
+   | Component | Created by Architecture | DON'T duplicate |
+   |-----------|------------------------|-----------------|
+   | `backend/src/` | VSA skeleton | Backend setup stories |
+   | `frontend/src/` | FSD skeleton | Frontend setup stories |
+   | `prisma/schema.prisma` | Base schema | DB schema stories |
+   | `docker-compose.yml` | Docker config | Docker stories |
+   | `vitest.config.ts` | Test config | Test setup stories |
+   | `eslint.config.mjs` | Linting | Tooling stories |
+   | `openapi.yaml` | API contract | API setup stories |
+
+4. **Correct first story examples:**
+
+   **If architecture exists:**
+   - STORY-001: TMA Authentication (first real feature!)
+   - STORY-002: User Profile API
+   - STORY-003: Data Pipeline Worker
+
+   **If NO architecture (greenfield):**
+   - STORY-001: Project Setup
+   - STORY-002: Database Schema
+   - STORY-003: Backend Skeleton
+
+**Store result:**
+```yaml
+architecture_exists: true|false
+skip_infrastructure_stories: true|false
+first_story_type: "business_feature"|"infrastructure"
+```
 
 ---
 
