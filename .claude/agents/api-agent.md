@@ -1,3 +1,9 @@
+---
+name: api-agent
+description: OpenAPI спецификация и генерация типов
+model: sonnet
+---
+
 # API Agent
 
 > OpenAPI спецификация и генерация типов

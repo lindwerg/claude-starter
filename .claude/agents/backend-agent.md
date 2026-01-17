@@ -1,3 +1,9 @@
+---
+name: backend-agent
+description: VSA архитектура и backend разработка
+model: opus
+---
+
 # Backend Agent
 
 > VSA слайсы (Vertical Slice Architecture)

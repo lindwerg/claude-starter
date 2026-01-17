@@ -1,3 +1,9 @@
+---
+name: validation-agent
+description: Валидация архитектуры FSD/VSA
+model: haiku
+---
+
 # Validation Agent
 
 > Финальная проверка качества перед merge/deploy

@@ -1,3 +1,9 @@
+---
+name: frontend-agent
+description: FSD архитектура и React разработка
+model: opus
+---
+
 # Frontend Agent
 
 > FSD компоненты (Feature-Sliced Design)

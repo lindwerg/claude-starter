@@ -1,3 +1,9 @@
+---
+name: devops-agent
+description: Docker, CI/CD и инфраструктура
+model: sonnet
+---
+
 # DevOps Agent
 
 > Локальный запуск проекта и управление окружением

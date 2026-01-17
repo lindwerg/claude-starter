@@ -1,3 +1,9 @@
+---
+name: test-agent
+description: Тестирование и TDD
+model: sonnet
+---
+
 # Test Agent
 
 > TDD-first подход: тесты пишутся ДО реализации
