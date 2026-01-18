@@ -1,13 +1,13 @@
+"use strict";
 var __defProp = Object.defineProperty;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// src/check-tests-pass.ts
-import { execSync } from "child_process";
-import { existsSync } from "fs";
-import { join } from "path";
+// src/vsa-validate.ts
+var import_fs = require("fs");
+var import_path = require("path");
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
@@ -4090,90 +4090,77 @@ function output(result) {
   console.log(JSON.stringify(result));
 }
 
-// src/check-tests-pass.ts
-var COVERAGE_THRESHOLD = 80;
-function hasTestSetup(cwd) {
-  const testConfigs = [
-    "jest.config.js",
-    "jest.config.ts",
-    "vitest.config.ts",
-    "vitest.config.js"
-  ];
-  return testConfigs.some((config) => existsSync(join(cwd, config)));
+// src/vsa-validate.ts
+var SLICE_REQUIRED_FILES = [
+  "index.ts"
+];
+var SLICE_RECOMMENDED_FILES = [
+  "*.controller.ts",
+  "*.service.ts",
+  "*.schema.ts"
+];
+function isBackendFile(filePath) {
+  return filePath.includes("/src/features/") && /\.(ts|tsx)$/.test(filePath);
 }
-function hasPackageJson(cwd) {
-  return existsSync(join(cwd, "package.json"));
+function getFilePath(input) {
+  const toolInput = input.tool_input;
+  return toolInput.file_path || toolInput.path || null;
 }
-function runTests(cwd) {
-  try {
-    const testOutput = execSync("npm test -- --coverage --passWithNoTests 2>&1", {
-      cwd,
-      encoding: "utf8",
-      timeout: 3e5
-      // 5 minute timeout
-    });
-    const coverage = parseCoverage(testOutput);
-    return {
-      passed: true,
-      output: testOutput,
-      coverage
-    };
-  } catch (error) {
-    const execError = error;
-    const errorOutput = execError.stdout || execError.stderr || execError.message || "Unknown test error";
-    const coverage = parseCoverage(errorOutput);
-    return {
-      passed: false,
-      output: errorOutput,
-      coverage
-    };
-  }
+function getSliceDir(filePath) {
+  const match = filePath.match(/(.+\/src\/features\/[^/]+)/);
+  return match ? match[1] : null;
 }
-function parseCoverage(output2) {
-  const coverageMatch = output2.match(/All files\s*\|\s*([\d.]+)/);
-  if (coverageMatch) {
-    return parseFloat(coverageMatch[1]);
-  }
-  const altMatch = output2.match(/Coverage:\s*([\d.]+)%/i);
-  if (altMatch) {
-    return parseFloat(altMatch[1]);
-  }
-  return void 0;
-}
-function extractFailedTests(output2) {
-  const failedTests = [];
-  const jestMatches = output2.match(/●\s+(.+)/g);
-  if (jestMatches) {
-    failedTests.push(...jestMatches.map((m) => m.replace(/^●\s+/, "").trim()).slice(0, 5));
-  }
-  const vitestMatches = output2.match(/FAIL\s+(.+?)>/g);
-  if (vitestMatches) {
-    failedTests.push(...vitestMatches.map((m) => m.replace(/FAIL\s+/, "").trim()).slice(0, 5));
-  }
-  return failedTests;
-}
-function formatTestSummary(result) {
-  let summary = "";
-  if (result.passed) {
-    summary += "Tests: PASSED\n";
-  } else {
-    summary += "Tests: FAILED\n";
-    summary += "\nTest Output:\n";
-    const maxLength = 2e3;
-    if (result.output.length > maxLength) {
-      summary += result.output.slice(-maxLength) + "\n...(truncated)";
-    } else {
-      summary += result.output;
+function validateImports(filePath, content) {
+  const errors = [];
+  const warnings = [];
+  const importRegex = /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+)?['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = importRegex.exec(content)) !== null) {
+    const importPath = match[1];
+    if (!importPath.startsWith(".") && !importPath.startsWith("/")) {
+      continue;
+    }
+    if (importPath.includes("/features/") && !importPath.includes("/features/shared")) {
+      const currentSlice = filePath.match(/\/features\/([^/]+)/)?.[1];
+      const importSlice = importPath.match(/\/features\/([^/]+)/)?.[1];
+      if (currentSlice && importSlice && currentSlice !== importSlice) {
+        if (!importPath.endsWith("/index") && !importPath.match(/\/[^/]+$/)) {
+          errors.push(
+            `Cross-slice import must use index.ts: "${importPath}" should import from "../${importSlice}" or "../${importSlice}/index"`
+          );
+        }
+      }
+    }
+    if (importPath.includes("/shared/") && importPath.split("/shared/")[1]?.includes("/")) {
+      const deepPath = importPath.split("/shared/")[1];
+      if (deepPath.split("/").length > 2) {
+        warnings.push(`Deep import into shared: "${importPath}" - consider flattening`);
+      }
     }
   }
-  if (result.coverage !== void 0) {
-    summary += `
-Coverage: ${result.coverage.toFixed(2)}%`;
-    if (result.coverage < COVERAGE_THRESHOLD) {
-      summary += ` (below ${COVERAGE_THRESHOLD}% threshold)`;
+  return { valid: errors.length === 0, errors, warnings };
+}
+function validateSliceStructure(sliceDir) {
+  const errors = [];
+  const warnings = [];
+  for (const required of SLICE_REQUIRED_FILES) {
+    const filePath = (0, import_path.join)(sliceDir, required);
+    if (!(0, import_fs.existsSync)(filePath)) {
+      errors.push(`Missing required file: ${required}`);
     }
   }
-  return summary;
+  for (const pattern of SLICE_RECOMMENDED_FILES) {
+    if (pattern.includes("*")) {
+      const basePattern = pattern.replace("*.", ".");
+      const sliceName = (0, import_path.basename)(sliceDir);
+      const expectedFile = `${sliceName}${basePattern}`;
+      const filePath = (0, import_path.join)(sliceDir, expectedFile);
+      if (!(0, import_fs.existsSync)(filePath)) {
+        warnings.push(`Consider adding: ${expectedFile}`);
+      }
+    }
+  }
+  return { valid: errors.length === 0, errors, warnings };
 }
 async function main() {
   const rawInput = await readStdin();
@@ -4184,47 +4171,52 @@ async function main() {
     output({ result: "continue", message: "Failed to parse hook input" });
     return;
   }
-  const cwd = input.cwd || process.cwd();
-  if (!hasPackageJson(cwd)) {
-    output({ result: "continue", message: "No package.json found - skipping tests" });
+  if (!["Edit", "Write"].includes(input.tool_name)) {
+    output({ result: "continue" });
     return;
   }
-  if (!hasTestSetup(cwd)) {
-    output({ result: "continue", message: "No test configuration found - skipping tests" });
+  const filePath = getFilePath(input);
+  if (!filePath) {
+    output({ result: "continue" });
     return;
   }
-  const testResult = runTests(cwd);
-  const summary = formatTestSummary(testResult);
-  const shouldBlock = !testResult.passed || testResult.coverage !== void 0 && testResult.coverage < COVERAGE_THRESHOLD;
-  if (shouldBlock) {
-    const blockReasons = [];
-    if (!testResult.passed) {
-      blockReasons.push("tests failed");
-    }
-    if (testResult.coverage !== void 0 && testResult.coverage < COVERAGE_THRESHOLD) {
-      blockReasons.push(`coverage ${testResult.coverage.toFixed(2)}% < ${COVERAGE_THRESHOLD}%`);
-    }
-    const failedTests = extractFailedTests(testResult.output);
-    const failedTestsList = failedTests.length > 0 ? "\n\n\u274C Failed tests:\n" + failedTests.map((t) => `  - ${t}`).join("\n") : "";
-    const result = {
-      result: "block",
-      message: `\u274C QUALITY GATE FAILED: ${blockReasons.join(", ")}
-
-${summary}${failedTestsList}
-
-\u2705 FIX BEFORE CONTINUING:
-1. Review test failures: npm test
-2. Fix failing tests or update expectations
-3. Ensure coverage >= ${COVERAGE_THRESHOLD}%
-4. Verify: npm test (should pass)`
-    };
-    output(result);
+  if (!isBackendFile(filePath)) {
+    output({ result: "continue" });
+    return;
+  }
+  const allErrors = [];
+  const allWarnings = [];
+  try {
+    const content = (0, import_fs.readFileSync)(filePath, "utf8");
+    const importResult = validateImports(filePath, content);
+    allErrors.push(...importResult.errors);
+    allWarnings.push(...importResult.warnings);
+  } catch {
+  }
+  const sliceDir = getSliceDir(filePath);
+  if (sliceDir && (0, import_fs.existsSync)(sliceDir)) {
+    const structureResult = validateSliceStructure(sliceDir);
+    allErrors.push(...structureResult.errors);
+    allWarnings.push(...structureResult.warnings);
+  }
+  let message = "";
+  if (allErrors.length > 0) {
+    message += `VSA Validation Errors:
+${allErrors.map((e) => `  - ${e}`).join("\n")}
+`;
+  }
+  if (allWarnings.length > 0) {
+    message += `
+VSA Warnings:
+${allWarnings.map((w) => `  - ${w}`).join("\n")}`;
+  }
+  if (allErrors.length > 0) {
+    output({ result: "block", message });
     return;
   }
   output({
     result: "continue",
-    message: `All checks passed.
-${summary}`
+    message: allWarnings.length > 0 ? message : `VSA structure valid for ${(0, import_path.basename)(filePath)}`
   });
 }
 main().catch((error) => {

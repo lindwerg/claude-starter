@@ -1,12 +1,14 @@
+"use strict";
 var __defProp = Object.defineProperty;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// src/auto-format.ts
-import { execSync } from "child_process";
-import { existsSync } from "fs";
+// src/check-tests-pass.ts
+var import_child_process = require("child_process");
+var import_fs = require("fs");
+var import_path = require("path");
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
@@ -4089,47 +4091,90 @@ function output(result) {
   console.log(JSON.stringify(result));
 }
 
-// src/auto-format.ts
-var FORMATTABLE_EXTENSIONS = [
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".json",
-  ".md",
-  ".yaml",
-  ".yml",
-  ".css",
-  ".scss",
-  ".html"
-];
-function isFormattable(filePath) {
-  return FORMATTABLE_EXTENSIONS.some((ext) => filePath.endsWith(ext));
+// src/check-tests-pass.ts
+var COVERAGE_THRESHOLD = 80;
+function hasTestSetup(cwd) {
+  const testConfigs = [
+    "jest.config.js",
+    "jest.config.ts",
+    "vitest.config.ts",
+    "vitest.config.js"
+  ];
+  return testConfigs.some((config) => (0, import_fs.existsSync)((0, import_path.join)(cwd, config)));
 }
-function getFilePath(input) {
-  const toolInput = input.tool_input;
-  return toolInput.file_path || toolInput.path || null;
+function hasPackageJson(cwd) {
+  return (0, import_fs.existsSync)((0, import_path.join)(cwd, "package.json"));
 }
-function runPrettier(filePath, cwd) {
+function runTests(cwd) {
   try {
-    execSync("which prettier || npx prettier --version", {
+    const testOutput = (0, import_child_process.execSync)("npm test -- --coverage --passWithNoTests 2>&1", {
       cwd,
       encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"]
+      timeout: 3e5
+      // 5 minute timeout
     });
-    execSync(`npx prettier --write "${filePath}"`, {
-      cwd,
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"]
-    });
-    return { success: true, message: `Formatted: ${filePath}` };
+    const coverage = parseCoverage(testOutput);
+    return {
+      passed: true,
+      output: testOutput,
+      coverage
+    };
   } catch (error) {
     const execError = error;
+    const errorOutput = execError.stdout || execError.stderr || execError.message || "Unknown test error";
+    const coverage = parseCoverage(errorOutput);
     return {
-      success: false,
-      message: `Prettier not available or failed: ${execError.message || "unknown error"}`
+      passed: false,
+      output: errorOutput,
+      coverage
     };
   }
+}
+function parseCoverage(output2) {
+  const coverageMatch = output2.match(/All files\s*\|\s*([\d.]+)/);
+  if (coverageMatch) {
+    return parseFloat(coverageMatch[1]);
+  }
+  const altMatch = output2.match(/Coverage:\s*([\d.]+)%/i);
+  if (altMatch) {
+    return parseFloat(altMatch[1]);
+  }
+  return void 0;
+}
+function extractFailedTests(output2) {
+  const failedTests = [];
+  const jestMatches = output2.match(/●\s+(.+)/g);
+  if (jestMatches) {
+    failedTests.push(...jestMatches.map((m) => m.replace(/^●\s+/, "").trim()).slice(0, 5));
+  }
+  const vitestMatches = output2.match(/FAIL\s+(.+?)>/g);
+  if (vitestMatches) {
+    failedTests.push(...vitestMatches.map((m) => m.replace(/FAIL\s+/, "").trim()).slice(0, 5));
+  }
+  return failedTests;
+}
+function formatTestSummary(result) {
+  let summary = "";
+  if (result.passed) {
+    summary += "Tests: PASSED\n";
+  } else {
+    summary += "Tests: FAILED\n";
+    summary += "\nTest Output:\n";
+    const maxLength = 2e3;
+    if (result.output.length > maxLength) {
+      summary += result.output.slice(-maxLength) + "\n...(truncated)";
+    } else {
+      summary += result.output;
+    }
+  }
+  if (result.coverage !== void 0) {
+    summary += `
+Coverage: ${result.coverage.toFixed(2)}%`;
+    if (result.coverage < COVERAGE_THRESHOLD) {
+      summary += ` (below ${COVERAGE_THRESHOLD}% threshold)`;
+    }
+  }
+  return summary;
 }
 async function main() {
   const rawInput = await readStdin();
@@ -4140,28 +4185,47 @@ async function main() {
     output({ result: "continue", message: "Failed to parse hook input" });
     return;
   }
-  if (input.tool_name !== "Write") {
-    output({ result: "continue" });
-    return;
-  }
-  const filePath = getFilePath(input);
-  if (!filePath) {
-    output({ result: "continue" });
-    return;
-  }
-  if (!existsSync(filePath)) {
-    output({ result: "continue" });
-    return;
-  }
-  if (!isFormattable(filePath)) {
-    output({ result: "continue" });
-    return;
-  }
   const cwd = input.cwd || process.cwd();
-  const { success, message } = runPrettier(filePath, cwd);
+  if (!hasPackageJson(cwd)) {
+    output({ result: "continue", message: "No package.json found - skipping tests" });
+    return;
+  }
+  if (!hasTestSetup(cwd)) {
+    output({ result: "continue", message: "No test configuration found - skipping tests" });
+    return;
+  }
+  const testResult = runTests(cwd);
+  const summary = formatTestSummary(testResult);
+  const shouldBlock = !testResult.passed || testResult.coverage !== void 0 && testResult.coverage < COVERAGE_THRESHOLD;
+  if (shouldBlock) {
+    const blockReasons = [];
+    if (!testResult.passed) {
+      blockReasons.push("tests failed");
+    }
+    if (testResult.coverage !== void 0 && testResult.coverage < COVERAGE_THRESHOLD) {
+      blockReasons.push(`coverage ${testResult.coverage.toFixed(2)}% < ${COVERAGE_THRESHOLD}%`);
+    }
+    const failedTests = extractFailedTests(testResult.output);
+    const failedTestsList = failedTests.length > 0 ? "\n\n\u274C Failed tests:\n" + failedTests.map((t) => `  - ${t}`).join("\n") : "";
+    const result = {
+      result: "block",
+      message: `\u274C QUALITY GATE FAILED: ${blockReasons.join(", ")}
+
+${summary}${failedTestsList}
+
+\u2705 FIX BEFORE CONTINUING:
+1. Review test failures: npm test
+2. Fix failing tests or update expectations
+3. Ensure coverage >= ${COVERAGE_THRESHOLD}%
+4. Verify: npm test (should pass)`
+    };
+    output(result);
+    return;
+  }
   output({
     result: "continue",
-    message: success ? message : `Skipped formatting: ${message}`
+    message: `All checks passed.
+${summary}`
   });
 }
 main().catch((error) => {

@@ -1,12 +1,33 @@
+"use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 
-// src/pre-compact-save-state.ts
-import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from "fs";
-import { join } from "path";
+// src/ralph-validation-enforcer.ts
+var fs = __toESM(require("fs/promises"), 1);
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
@@ -4089,135 +4110,44 @@ function output(result) {
   console.log(JSON.stringify(result));
 }
 
-// src/pre-compact-save-state.ts
-var LEDGER_DIR = "thoughts/ledgers";
-var LEDGER_PREFIX = "CONTINUITY_CLAUDE-";
-function findLedgers(cwd) {
-  const ledgerPath = join(cwd, LEDGER_DIR);
-  try {
-    const files = readdirSync(ledgerPath);
-    const ledgers = [];
-    for (const file of files) {
-      if (file.startsWith(LEDGER_PREFIX) && file.endsWith(".md")) {
-        const fullPath = join(ledgerPath, file);
-        const stats = statSync(fullPath);
-        const content = readFileSync(fullPath, "utf8");
-        ledgers.push({
-          path: fullPath,
-          name: file.replace(LEDGER_PREFIX, "").replace(".md", ""),
-          mtime: stats.mtime,
-          content
-        });
-      }
-    }
-    return ledgers.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-  } catch {
-    return [];
-  }
-}
-function updateTimestamp(content) {
-  const now = (/* @__PURE__ */ new Date()).toISOString();
-  const timestampLine = `_Last updated: ${now}_`;
-  if (content.includes("_Last updated:")) {
-    return content.replace(/_Last updated:.*_/, timestampLine);
-  }
-  const lines = content.split("\n");
-  const titleIndex = lines.findIndex((line) => line.startsWith("# "));
-  if (titleIndex !== -1) {
-    lines.splice(titleIndex + 1, 0, "", timestampLine);
-  } else {
-    lines.unshift(timestampLine, "");
-  }
-  return lines.join("\n");
-}
-function markUnconfirmedItems(content) {
-  let markedCount = 0;
-  const updatedContent = content.replace(
-    /## Open Questions\s*\n([\s\S]*?)(?=\n## |\n---|\$)/,
-    (match, questionsContent) => {
-      const lines = questionsContent.split("\n");
-      const updatedLines = lines.map((line) => {
-        if (line.trim().startsWith("- ") && !line.includes("UNCONFIRMED:")) {
-          markedCount++;
-          return line.replace(/^(\s*- )/, "$1UNCONFIRMED: ");
-        }
-        return line;
-      });
-      return `## Open Questions
-${updatedLines.join("\n")}`;
-    }
-  );
-  return { content: updatedContent, markedCount };
-}
-function addCompactionNote(content, contextTokens, maxTokens) {
-  const now = (/* @__PURE__ */ new Date()).toISOString();
-  let note = `
----
-_Context compacted at ${now}`;
-  if (contextTokens && maxTokens) {
-    const percentage = (contextTokens / maxTokens * 100).toFixed(1);
-    note += ` (${percentage}% context usage)`;
-  }
-  note += "_\n";
-  if (content.includes("## Working Set")) {
-    return content.replace(/## Working Set/, `${note}
-## Working Set`);
-  }
-  return content + note;
-}
-function ensureLedgerDir(cwd) {
-  const ledgerPath = join(cwd, LEDGER_DIR);
-  if (!existsSync(ledgerPath)) {
-    mkdirSync(ledgerPath, { recursive: true });
-  }
-}
+// src/ralph-validation-enforcer.ts
 async function main() {
-  const rawInput = await readStdin();
-  let input;
+  const input = JSON.parse(await readStdin());
   try {
-    input = JSON.parse(rawInput);
-  } catch {
-    output({ result: "continue", message: "Failed to parse hook input" });
-    return;
-  }
-  const cwd = input.cwd || process.cwd();
-  const ledgers = findLedgers(cwd);
-  if (ledgers.length === 0) {
-    output({
-      result: "continue",
-      message: "No continuity ledger found - state not saved before compaction"
-    });
-    return;
-  }
-  const activeLedger = ledgers[0];
-  let updatedContent = activeLedger.content;
-  updatedContent = updateTimestamp(updatedContent);
-  const { content: markedContent, markedCount } = markUnconfirmedItems(updatedContent);
-  updatedContent = markedContent;
-  updatedContent = addCompactionNote(
-    updatedContent,
-    input.context_tokens,
-    input.max_tokens
-  );
-  try {
-    ensureLedgerDir(cwd);
-    writeFileSync(activeLedger.path, updatedContent, "utf8");
-    let message = `Ledger saved: ${activeLedger.name}`;
-    if (markedCount > 0) {
-      message += ` (marked ${markedCount} items as UNCONFIRMED)`;
+    const markerExists = await fileExists(".bmad/sprint-validation-pending");
+    if (!markerExists) {
+      return output({ result: "continue" });
     }
-    output({
-      result: "continue",
-      message
+    return output({
+      result: "block",
+      message: `
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\u26A0\uFE0F  SPRINT VALIDATION REQUIRED
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+Sprint completed but not validated yet.
+
+\u{1F4CB} REQUIRED ACTION:
+   Run /validate-sprint to:
+   1. Test the application manually
+   2. Generate task-queue.yaml for next sprint
+   3. Unlock Ralph Loop
+
+\u26D4 Ralph Loop is BLOCKED until validation completes
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+`
     });
   } catch (error) {
-    const writeError = error;
-    output({
-      result: "continue",
-      message: `Failed to save ledger: ${writeError.message || "unknown error"}`
-    });
+    console.error("\u274C Validation enforcer error:", error);
+    return output({ result: "continue" });
   }
 }
-main().catch((error) => {
-  output({ result: "continue", message: `Hook error: ${error.message}` });
-});
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+main();

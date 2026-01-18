@@ -30,4 +30,4 @@ fi
 
 # Run pre-compiled handler (10x faster than npx tsx)
 cd "$PROJECT_DIR/.claude/hooks"
-cat | node dist/task-verification.js
+cat | node dist/task-verification.cjs

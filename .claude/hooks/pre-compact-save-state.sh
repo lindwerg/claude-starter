@@ -1,4 +1,4 @@
 #!/bin/bash
 set -e
 cd "$CLAUDE_PROJECT_DIR/.claude/hooks"
-cat | node dist/pre-compact-save-state.js
+cat | node dist/pre-compact-save-state.cjs

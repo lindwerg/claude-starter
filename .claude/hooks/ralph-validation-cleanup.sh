@@ -9,4 +9,4 @@
 set -e
 
 cd "$CLAUDE_PROJECT_DIR/.claude/hooks"
-cat | node dist/ralph-validation-cleanup.js
+cat | node dist/ralph-validation-cleanup.cjs

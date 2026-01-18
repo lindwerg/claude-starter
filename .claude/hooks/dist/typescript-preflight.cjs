@@ -1,3 +1,4 @@
+"use strict";
 var __defProp = Object.defineProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -5,7 +6,7 @@ var __export = (target, all) => {
 };
 
 // src/typescript-preflight.ts
-import { execSync } from "child_process";
+var import_child_process = require("child_process");
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
@@ -4098,7 +4099,7 @@ function getFilePath(input) {
 }
 function runTypeScriptCheck(filePath, cwd) {
   try {
-    execSync(`tsc --noEmit --skipLibCheck "${filePath}"`, {
+    (0, import_child_process.execSync)(`tsc --noEmit --skipLibCheck "${filePath}"`, {
       cwd,
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"]

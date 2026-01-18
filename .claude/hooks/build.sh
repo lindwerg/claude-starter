@@ -31,8 +31,8 @@ HOOKS=(
 npx esbuild src/types.ts \
   --bundle \
   --platform=node \
-  --format=esm \
-  --outfile=dist/types.js \
+  --format=cjs \
+  --outfile=dist/types.cjs \
   --external:fs \
   --external:path \
   --external:child_process \
@@ -45,8 +45,8 @@ for hook in "${HOOKS[@]}"; do
     npx esbuild "src/$hook.ts" \
       --bundle \
       --platform=node \
-      --format=esm \
-      --outfile="dist/$hook.js" \
+      --format=cjs \
+      --outfile="dist/$hook.cjs" \
       --external:fs \
       --external:path \
       --external:child_process \

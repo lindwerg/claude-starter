@@ -9,4 +9,4 @@
 set -e
 
 cd "$CLAUDE_PROJECT_DIR/.claude/hooks"
-cat | node dist/ralph-validation-enforcer.js
+cat | node dist/ralph-validation-enforcer.cjs

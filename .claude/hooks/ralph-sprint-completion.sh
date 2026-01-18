@@ -10,4 +10,4 @@
 set -e
 
 cd "$CLAUDE_PROJECT_DIR/.claude/hooks"
-cat | node dist/ralph-sprint-completion.js
+cat | node dist/ralph-sprint-completion.cjs

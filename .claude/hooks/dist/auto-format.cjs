@@ -1,11 +1,13 @@
+"use strict";
 var __defProp = Object.defineProperty;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// src/ralph-validation-cleanup.ts
-import * as fs from "fs/promises";
+// src/auto-format.ts
+var import_child_process = require("child_process");
+var import_fs = require("fs");
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
@@ -4088,45 +4090,81 @@ function output(result) {
   console.log(JSON.stringify(result));
 }
 
-// src/ralph-validation-cleanup.ts
-async function main() {
-  const input = JSON.parse(await readStdin());
+// src/auto-format.ts
+var FORMATTABLE_EXTENSIONS = [
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".json",
+  ".md",
+  ".yaml",
+  ".yml",
+  ".css",
+  ".scss",
+  ".html"
+];
+function isFormattable(filePath) {
+  return FORMATTABLE_EXTENSIONS.some((ext) => filePath.endsWith(ext));
+}
+function getFilePath(input) {
+  const toolInput = input.tool_input;
+  return toolInput.file_path || toolInput.path || null;
+}
+function runPrettier(filePath, cwd) {
   try {
-    const filePath = input.tool_input.file_path || "";
-    const isTaskQueue = filePath.endsWith("task-queue.yaml");
-    if (!isTaskQueue) {
-      return output({ result: "continue" });
-    }
-    const markerExists = await fileExists(".bmad/sprint-validation-pending");
-    if (!markerExists) {
-      return output({ result: "continue" });
-    }
-    await fs.unlink(".bmad/sprint-validation-pending");
-    return output({
-      result: "continue",
-      message: `
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u2705 SPRINT VALIDATION COMPLETED
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-task-queue.yaml generated successfully.
-Validation marker removed.
-
-\u{1F680} Ralph Loop is now UNLOCKED and ready to continue.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`
+    (0, import_child_process.execSync)("which prettier || npx prettier --version", {
+      cwd,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"]
     });
+    (0, import_child_process.execSync)(`npx prettier --write "${filePath}"`, {
+      cwd,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    return { success: true, message: `Formatted: ${filePath}` };
   } catch (error) {
-    console.error("\u274C Validation cleanup error:", error);
-    return output({ result: "continue" });
+    const execError = error;
+    return {
+      success: false,
+      message: `Prettier not available or failed: ${execError.message || "unknown error"}`
+    };
   }
 }
-async function fileExists(filePath) {
+async function main() {
+  const rawInput = await readStdin();
+  let input;
   try {
-    await fs.access(filePath);
-    return true;
+    input = JSON.parse(rawInput);
   } catch {
-    return false;
+    output({ result: "continue", message: "Failed to parse hook input" });
+    return;
   }
+  if (input.tool_name !== "Write") {
+    output({ result: "continue" });
+    return;
+  }
+  const filePath = getFilePath(input);
+  if (!filePath) {
+    output({ result: "continue" });
+    return;
+  }
+  if (!(0, import_fs.existsSync)(filePath)) {
+    output({ result: "continue" });
+    return;
+  }
+  if (!isFormattable(filePath)) {
+    output({ result: "continue" });
+    return;
+  }
+  const cwd = input.cwd || process.cwd();
+  const { success, message } = runPrettier(filePath, cwd);
+  output({
+    result: "continue",
+    message: success ? message : `Skipped formatting: ${message}`
+  });
 }
-main();
+main().catch((error) => {
+  output({ result: "continue", message: `Hook error: ${error.message}` });
+});

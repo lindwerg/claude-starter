@@ -1,15 +1,33 @@
+"use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
-var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-}) : x)(function(x) {
-  if (typeof require !== "undefined")
-    return require.apply(this, arguments);
-  throw Error('Dynamic require of "' + x + '" is not supported');
-});
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+
+// src/ralph-validation-cleanup.ts
+var fs = __toESM(require("fs/promises"), 1);
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
@@ -4091,57 +4109,46 @@ async function readStdin() {
 function output(result) {
   console.log(JSON.stringify(result));
 }
-function validateInput(schema, rawInput, hookName) {
+
+// src/ralph-validation-cleanup.ts
+async function main() {
+  const input = JSON.parse(await readStdin());
   try {
-    const parsed = JSON.parse(rawInput);
-    const result = schema.safeParse(parsed);
-    if (!result.success) {
-      const errors = result.error.errors.map((e) => `  - ${e.path.join(".")}: ${e.message}`).join("\n");
-      output({
-        result: "continue",
-        message: `[${hookName}] Invalid input:
-${errors}`
-      });
-      return null;
+    const filePath = input.tool_input.file_path || "";
+    const isTaskQueue = filePath.endsWith("task-queue.yaml");
+    if (!isTaskQueue) {
+      return output({ result: "continue" });
     }
-    return result.data;
-  } catch (error) {
-    output({
+    const markerExists = await fileExists(".bmad/sprint-validation-pending");
+    if (!markerExists) {
+      return output({ result: "continue" });
+    }
+    await fs.unlink(".bmad/sprint-validation-pending");
+    return output({
       result: "continue",
-      message: `[${hookName}] Failed to parse input: ${error}`
+      message: `
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\u2705 SPRINT VALIDATION COMPLETED
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+task-queue.yaml generated successfully.
+Validation marker removed.
+
+\u{1F680} Ralph Loop is now UNLOCKED and ready to continue.
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+`
     });
-    return null;
-  }
-}
-function logMetric(metric) {
-  try {
-    const fs = __require("fs");
-    const path = __require("path");
-    const metricsDir = path.join(process.cwd(), ".claude", "hooks", "metrics");
-    if (!fs.existsSync(metricsDir)) {
-      fs.mkdirSync(metricsDir, { recursive: true });
-    }
-    const date = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-    const logFile = path.join(metricsDir, `${date}.jsonl`);
-    const entry = {
-      ...metric,
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    fs.appendFileSync(logFile, JSON.stringify(entry) + "\n", "utf8");
   } catch (error) {
-    console.error(`[logMetric] Failed to log metric: ${error}`);
+    console.error("\u274C Validation cleanup error:", error);
+    return output({ result: "continue" });
   }
 }
-export {
-  BaseHookInputSchema,
-  HookOutputSchema,
-  PostToolUseInputSchema,
-  PreCompactInputSchema,
-  PreToolUseInputSchema,
-  SessionStartInputSchema,
-  StopInputSchema,
-  logMetric,
-  output,
-  readStdin,
-  validateInput
-};
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+main();

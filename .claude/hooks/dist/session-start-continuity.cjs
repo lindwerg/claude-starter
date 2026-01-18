@@ -1,12 +1,13 @@
+"use strict";
 var __defProp = Object.defineProperty;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// src/vsa-validate.ts
-import { existsSync, readFileSync } from "fs";
-import { basename, join } from "path";
+// src/session-start-continuity.ts
+var import_fs = require("fs");
+var import_path = require("path");
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
 var external_exports = {};
@@ -4089,77 +4090,148 @@ function output(result) {
   console.log(JSON.stringify(result));
 }
 
-// src/vsa-validate.ts
-var SLICE_REQUIRED_FILES = [
-  "index.ts"
-];
-var SLICE_RECOMMENDED_FILES = [
-  "*.controller.ts",
-  "*.service.ts",
-  "*.schema.ts"
-];
-function isBackendFile(filePath) {
-  return filePath.includes("/src/features/") && /\.(ts|tsx)$/.test(filePath);
-}
-function getFilePath(input) {
-  const toolInput = input.tool_input;
-  return toolInput.file_path || toolInput.path || null;
-}
-function getSliceDir(filePath) {
-  const match = filePath.match(/(.+\/src\/features\/[^/]+)/);
-  return match ? match[1] : null;
-}
-function validateImports(filePath, content) {
-  const errors = [];
-  const warnings = [];
-  const importRegex = /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+)?['"]([^'"]+)['"]/g;
-  let match;
-  while ((match = importRegex.exec(content)) !== null) {
-    const importPath = match[1];
-    if (!importPath.startsWith(".") && !importPath.startsWith("/")) {
-      continue;
-    }
-    if (importPath.includes("/features/") && !importPath.includes("/features/shared")) {
-      const currentSlice = filePath.match(/\/features\/([^/]+)/)?.[1];
-      const importSlice = importPath.match(/\/features\/([^/]+)/)?.[1];
-      if (currentSlice && importSlice && currentSlice !== importSlice) {
-        if (!importPath.endsWith("/index") && !importPath.match(/\/[^/]+$/)) {
-          errors.push(
-            `Cross-slice import must use index.ts: "${importPath}" should import from "../${importSlice}" or "../${importSlice}/index"`
-          );
-        }
+// src/session-start-continuity.ts
+var LEDGER_DIR = "thoughts/ledgers";
+var LEDGER_PREFIX = "CONTINUITY_CLAUDE-";
+function findLedgers(cwd) {
+  const ledgerPath = (0, import_path.join)(cwd, LEDGER_DIR);
+  try {
+    const files = (0, import_fs.readdirSync)(ledgerPath);
+    const ledgers = [];
+    for (const file of files) {
+      if (file.startsWith(LEDGER_PREFIX) && file.endsWith(".md")) {
+        const fullPath = (0, import_path.join)(ledgerPath, file);
+        const stats = (0, import_fs.statSync)(fullPath);
+        const content = (0, import_fs.readFileSync)(fullPath, "utf8");
+        ledgers.push({
+          path: fullPath,
+          name: file.replace(LEDGER_PREFIX, "").replace(".md", ""),
+          mtime: stats.mtime,
+          content
+        });
       }
     }
-    if (importPath.includes("/shared/") && importPath.split("/shared/")[1]?.includes("/")) {
-      const deepPath = importPath.split("/shared/")[1];
-      if (deepPath.split("/").length > 2) {
-        warnings.push(`Deep import into shared: "${importPath}" - consider flattening`);
-      }
-    }
+    return ledgers.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+  } catch {
+    return [];
   }
-  return { valid: errors.length === 0, errors, warnings };
 }
-function validateSliceStructure(sliceDir) {
-  const errors = [];
-  const warnings = [];
-  for (const required of SLICE_REQUIRED_FILES) {
-    const filePath = join(sliceDir, required);
-    if (!existsSync(filePath)) {
-      errors.push(`Missing required file: ${required}`);
-    }
+function parseStateSection(content) {
+  const state = {
+    done: [],
+    now: null,
+    next: [],
+    remaining: []
+  };
+  const stateMatch = content.match(/## State\s*\n([\s\S]*?)(?=\n## |\n---|\$)/);
+  if (!stateMatch)
+    return state;
+  const stateContent = stateMatch[1];
+  const doneMatch = stateContent.match(/- Done:\s*\n((?:\s+- \[x\].*\n?)*)/);
+  if (doneMatch) {
+    const doneItems = doneMatch[1].match(/- \[x\] (.+)/g) || [];
+    state.done = doneItems.map((item) => item.replace(/- \[x\] /, ""));
   }
-  for (const pattern of SLICE_RECOMMENDED_FILES) {
-    if (pattern.includes("*")) {
-      const basePattern = pattern.replace("*.", ".");
-      const sliceName = basename(sliceDir);
-      const expectedFile = `${sliceName}${basePattern}`;
-      const filePath = join(sliceDir, expectedFile);
-      if (!existsSync(filePath)) {
-        warnings.push(`Consider adding: ${expectedFile}`);
-      }
-    }
+  const nowMatch = stateContent.match(/- Now: \[→\] (.+)/);
+  if (nowMatch) {
+    state.now = nowMatch[1];
   }
-  return { valid: errors.length === 0, errors, warnings };
+  const nextMatch = stateContent.match(/- Next: (.+)/);
+  if (nextMatch) {
+    state.next = [nextMatch[1]];
+  }
+  const remainingMatch = stateContent.match(/- Remaining:\s*\n((?:\s+- \[ \].*\n?)*)/);
+  if (remainingMatch) {
+    const remainingItems = remainingMatch[1].match(/- \[ \] (.+)/g) || [];
+    state.remaining = remainingItems.map((item) => item.replace(/- \[ \] /, ""));
+  }
+  return state;
+}
+function parseGoal(content) {
+  const goalMatch = content.match(/## Goal\s*\n([\s\S]*?)(?=\n## |\n---)/);
+  if (goalMatch) {
+    return goalMatch[1].trim().split("\n")[0];
+  }
+  return null;
+}
+function parseOpenQuestions(content) {
+  const questionsMatch = content.match(/## Open Questions\s*\n([\s\S]*?)(?=\n## |\n---|\$)/);
+  if (!questionsMatch)
+    return [];
+  const questions = questionsMatch[1].match(/- UNCONFIRMED:.+/g) || [];
+  return questions.map((q) => q.replace(/- /, ""));
+}
+function formatStatusLine(ledger) {
+  const state = parseStateSection(ledger.content);
+  const goal = parseGoal(ledger.content);
+  const questions = parseOpenQuestions(ledger.content);
+  let status = `\u{1F4CB} Ledger: ${ledger.name}
+`;
+  if (goal) {
+    status += `\u{1F3AF} Goal: ${goal}
+`;
+  }
+  if (state.done.length > 0) {
+    status += `\u2713 Completed: ${state.done.length} phase(s)
+`;
+  }
+  if (state.now) {
+    status += `\u2192 Current: ${state.now}
+`;
+  }
+  if (state.remaining.length > 0) {
+    status += `\u25CB Remaining: ${state.remaining.length} phase(s)
+`;
+  }
+  if (questions.length > 0) {
+    status += `
+\u26A0\uFE0F UNCONFIRMED items:
+`;
+    questions.forEach((q) => {
+      status += `  - ${q}
+`;
+    });
+  }
+  return status;
+}
+function formatFullContext(ledger) {
+  const state = parseStateSection(ledger.content);
+  const goal = parseGoal(ledger.content);
+  let context = `
+${"=".repeat(60)}
+`;
+  context += `CONTINUITY LEDGER: ${ledger.name}
+`;
+  context += `${"=".repeat(60)}
+
+`;
+  if (goal) {
+    context += `GOAL: ${goal}
+
+`;
+  }
+  context += `PROGRESS:
+`;
+  state.done.forEach((item, i) => {
+    context += `  [x] Phase ${i + 1}: ${item}
+`;
+  });
+  if (state.now) {
+    context += `  [\u2192] CURRENT: ${state.now}
+`;
+  }
+  state.remaining.forEach((item, i) => {
+    context += `  [ ] Pending ${i + 1}: ${item}
+`;
+  });
+  context += `
+${"=".repeat(60)}
+`;
+  context += `Full ledger: ${ledger.path}
+`;
+  context += `${"=".repeat(60)}
+`;
+  return context;
 }
 async function main() {
   const rawInput = await readStdin();
@@ -4170,52 +4242,42 @@ async function main() {
     output({ result: "continue", message: "Failed to parse hook input" });
     return;
   }
-  if (!["Edit", "Write"].includes(input.tool_name)) {
-    output({ result: "continue" });
+  const cwd = input.cwd || process.cwd();
+  const eventType = input.type || "start";
+  const ledgers = findLedgers(cwd);
+  if (ledgers.length === 0) {
+    output({
+      result: "continue",
+      message: `Session ${eventType}: No continuity ledger found in ${LEDGER_DIR}/`
+    });
     return;
   }
-  const filePath = getFilePath(input);
-  if (!filePath) {
-    output({ result: "continue" });
-    return;
-  }
-  if (!isBackendFile(filePath)) {
-    output({ result: "continue" });
-    return;
-  }
-  const allErrors = [];
-  const allWarnings = [];
-  try {
-    const content = readFileSync(filePath, "utf8");
-    const importResult = validateImports(filePath, content);
-    allErrors.push(...importResult.errors);
-    allWarnings.push(...importResult.warnings);
-  } catch {
-  }
-  const sliceDir = getSliceDir(filePath);
-  if (sliceDir && existsSync(sliceDir)) {
-    const structureResult = validateSliceStructure(sliceDir);
-    allErrors.push(...structureResult.errors);
-    allWarnings.push(...structureResult.warnings);
-  }
-  let message = "";
-  if (allErrors.length > 0) {
-    message += `VSA Validation Errors:
-${allErrors.map((e) => `  - ${e}`).join("\n")}
-`;
-  }
-  if (allWarnings.length > 0) {
-    message += `
-VSA Warnings:
-${allWarnings.map((w) => `  - ${w}`).join("\n")}`;
-  }
-  if (allErrors.length > 0) {
-    output({ result: "block", message });
-    return;
+  const activeLedger = ledgers[0];
+  let message;
+  switch (eventType) {
+    case "resume":
+      message = `\u{1F504} Resuming session with continuity ledger.
+
+${formatStatusLine(activeLedger)}${formatFullContext(activeLedger)}`;
+      break;
+    case "compact":
+      message = `\u{1F4E6} Context compacted. Ledger state preserved.
+
+${formatStatusLine(activeLedger)}`;
+      break;
+    case "clear":
+      message = `\u{1F9F9} Context cleared. Loading ledger state.
+
+${formatStatusLine(activeLedger)}${formatFullContext(activeLedger)}`;
+      break;
+    default:
+      message = `\u{1F680} Session started. Found continuity ledger.
+
+${formatStatusLine(activeLedger)}`;
   }
   output({
     result: "continue",
-    message: allWarnings.length > 0 ? message : `VSA structure valid for ${basename(filePath)}`
+    message
   });
 }
 main().catch((error) => {
