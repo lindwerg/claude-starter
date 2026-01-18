@@ -506,10 +506,10 @@ export function getHealthStatus(): HealthStatus {
 EOF
 
   cat > backend/src/features/health/health.controller.ts << 'EOF'
-import { Router } from 'express';
+import { Router, type Router as RouterType } from 'express';
 import { getHealthStatus } from './health.service.js';
 
-const router = Router();
+const router: RouterType = Router();
 
 router.get('/', (_req, res) => {
   res.json(getHealthStatus());
@@ -1015,6 +1015,29 @@ verify_servers() {
   log_info "All servers verified"
 }
 
+# Setup .claude/ directory for project-specific hooks
+setup_claude_config() {
+  log_step "Setting up .claude/ configuration..."
+
+  # Create .claude directory
+  mkdir -p .claude/hooks
+
+  # Copy hooks from global installation
+  if [ -d "$HOME/.claude/hooks" ]; then
+    cp -r "$HOME/.claude/hooks/"* .claude/hooks/ 2>/dev/null || true
+    chmod +x .claude/hooks/*.sh 2>/dev/null || true
+    log_info "Hooks copied from global installation"
+  fi
+
+  # Copy settings.json
+  if [ -f "$HOME/.claude/settings.json" ]; then
+    cp "$HOME/.claude/settings.json" .claude/
+    log_info "settings.json copied"
+  fi
+
+  log_info ".claude/ configuration ready"
+}
+
 # Initialize git
 init_git() {
   log_step "Initializing git repository..."
@@ -1080,6 +1103,7 @@ main() {
   install_dependencies
   setup_database
   verify_servers
+  setup_claude_config
   init_git
   print_summary
 }
