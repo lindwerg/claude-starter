@@ -1025,6 +1025,10 @@ setup_project_claude() {
   if [ -d "$CLAUDE_DIR/hooks" ]; then
     cp -r "$CLAUDE_DIR/hooks/"* "$PROJECT_DIR/.claude/hooks/" 2>/dev/null || true
     chmod +x "$PROJECT_DIR/.claude/hooks/"*.sh 2>/dev/null || true
+    # Install hooks dependencies
+    if [ -f "$PROJECT_DIR/.claude/hooks/package.json" ]; then
+      (cd "$PROJECT_DIR/.claude/hooks" && pnpm install --ignore-workspace >/dev/null 2>&1) || true
+    fi
   fi
 
   # Copy settings.json
