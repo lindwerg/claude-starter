@@ -5,6 +5,41 @@ All notable changes to the hooks system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-01-18
+
+### Added
+- **[MONITORING]** Hook metrics and monitoring system
+  - `logMetric()` helper in types.ts for tracking hook execution
+  - `analyze-metrics.sh` script for metrics analysis
+  - `log-metric.sh` bash helper for non-TypeScript hooks
+  - Metrics logged to `.claude/hooks/metrics/YYYY-MM-DD.jsonl`
+  - Instrumented backpressure-gate.sh as reference implementation
+  - **Impact**: Track performance, block rates, identify slow hooks
+
+- **[GLOB SUPPORT]** Full glob pattern support via minimatch
+  - Added minimatch library (v10.0.1) to dependencies
+  - Support for `**` (recursive), `*` (wildcard), `?` (single char), `[]` (character class)
+  - Updated task-verification.ts with `findFilesRecursive()` for `**` patterns
+  - **Impact**: Task outputs can now use patterns like `src/**/*.test.ts`
+
+- **[VALIDATION]** Input validation via Zod schemas
+  - Added zod library (v3.25.0) to dependencies
+  - Zod schemas for all hook input types (PreToolUse, PostToolUse, SessionStart, etc.)
+  - `validateInput()` helper with clear error messages
+  - **Impact**: Type-safe hook inputs, better error messages for invalid data
+
+### Changed
+- **[ERROR MESSAGES]** Improved error messages with context
+  - backpressure-gate.sh: Shows error count, first 10 errors, affected files, common fixes
+  - check-tests-pass.ts: Shows failed test names, coverage details, fix instructions
+  - sprint-plan-validator.sh: Shows detected forbidden patterns, actionable fix steps
+  - **Impact**: Faster debugging, clearer action items
+
+### Deprecated
+- Simple regex-based glob matching (replaced with minimatch)
+
+---
+
 ## [2.1.0] - 2026-01-18
 
 ### Added

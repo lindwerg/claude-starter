@@ -4,9 +4,15 @@
 
 ## Версионирование
 
-**Текущая версия**: 2.1.0
+**Текущая версия**: 2.2.0
 
 См. [CHANGELOG.md](./CHANGELOG.md) для истории изменений и миграционных инструкций.
+
+**Последние улучшения (v2.2.0)**:
+- 📊 **Monitoring**: Hook metrics tracking with analyze-metrics.sh
+- 🔍 **Glob Support**: Full `**` pattern support via minimatch
+- ✅ **Validation**: Zod schemas for type-safe inputs
+- 📝 **Error Messages**: Context-rich errors with fix instructions
 
 ### Semantic Versioning
 

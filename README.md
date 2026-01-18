@@ -164,15 +164,21 @@ fi
 
 ### Версионирование Hooks
 
-**Текущая версия**: 2.1.0
+**Текущая версия**: 2.2.0
 
 См. [`.claude/hooks/CHANGELOG.md`](./.claude/hooks/CHANGELOG.md) для истории изменений и миграционных инструкций.
 
-**Последние улучшения (v2.1.0)**:
-- ⚡ **Performance**: Миграция 4 hooks на pre-compiled JavaScript (~10x faster)
-- 🛡️ **Reliability**: Исправление race condition в `subagent-enforcement.sh` (UUID markers)
-- ✅ **Testing**: Automated test suite для критических hooks (80%+ coverage)
-- 📚 **Documentation**: Детальный README с best practices и архитектурными паттернами
+**Последние улучшения (v2.2.0)**:
+- 📊 **Monitoring**: Hook metrics tracking with analyze-metrics.sh
+- 🔍 **Glob Support**: Full `**` pattern support via minimatch
+- ✅ **Validation**: Zod schemas for type-safe inputs
+- 📝 **Error Messages**: Context-rich errors with fix instructions
+
+**v2.1.0 (Previous)**:
+- ⚡ **Performance**: 4 hooks migrated to pre-compiled JavaScript (~10x faster)
+- 🛡️ **Reliability**: Fixed race condition in `subagent-enforcement.sh` (UUID markers)
+- ✅ **Testing**: Automated test suite (80%+ coverage)
+- 📚 **Documentation**: Comprehensive README with best practices
 
 ### Тестирование Hooks
 
