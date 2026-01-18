@@ -1,74 +1,78 @@
-# Claude Starter Kit
+# Provide Starter Kit
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-green.svg)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)
 
-> One command to set up autonomous full-stack development with Claude Code
+> Автономная разработка full-stack приложений с Claude Code
 
-Transform Claude Code into a fully autonomous development system with specialized subagents, architectural patterns, and production-ready workflows.
+Превращает Claude Code в полностью автономную систему разработки со специализированными агентами, архитектурными паттернами и production-ready workflows.
 
 ---
 
-## Quick Start
+## Быстрый старт
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
 ```
 
-After installation, restart Claude Code and run:
+После установки:
 
 ```bash
 mkdir my-app && cd my-app
-/init-project
+claude
+/step1-init
 ```
 
 ---
 
-## What You Get
+## Что получаешь?
 
-### 6 Specialized Subagents
+### 6 специализированных агентов
 
-| Agent | Responsibility |
-|-------|----------------|
-| **API Agent** | OpenAPI specification, type generation, API contracts |
+| Агент | Ответственность |
+|-------|-----------------|
+| **API Agent** | OpenAPI спецификация, типы, API контракты |
 | **Backend Agent** | VSA slices (Vertical Slice Architecture) |
-| **Frontend Agent** | FSD components (Feature-Sliced Design) |
-| **Test Agent** | TDD-first testing with Vitest and Playwright |
-| **DevOps Agent** | Local environment, Docker, migrations |
-| **Validation Agent** | Architecture checks, linting, coverage |
+| **Frontend Agent** | FSD компоненты (Feature-Sliced Design) |
+| **Test Agent** | TDD-first тестирование (Vitest, Playwright) |
+| **DevOps Agent** | Docker, миграции, окружение |
+| **Validation Agent** | Проверка архитектуры, линтинг, coverage |
 
-### BMAD v6 Workflow
+### 7 шагов разработки
 
-Complete product development lifecycle:
-- Product Brief creation
-- PRD (Product Requirements Document)
-- Technical Architecture
-- Epic and Story breakdown
-- Autonomous implementation
+| Шаг | Команда | Описание |
+|-----|---------|----------|
+| 1 | `/step1-init` | Создание структуры проекта |
+| 2 | `/step2-brief` | Бизнес-анализ требований |
+| 3 | `/step3-prd` | Документ требований (PRD) |
+| 4 | `/step4-arch` | Техническая архитектура |
+| 5 | `/step5-sprint` | Планирование спринта |
+| 6 | `/step6-validate` | Валидация и очередь задач |
+| 7 | `/step7-build` | Автономная разработка |
 
-### Production-Ready Architecture
+### Production-Ready архитектура
 
-- **VSA (Vertical Slice Architecture)** for backend
-- **FSD (Feature-Sliced Design)** for frontend
-- **OpenAPI 3.1** as the single source of truth
-- **TypeScript strict mode** everywhere
-- **Zod validation** for all inputs
+- **VSA (Vertical Slice Architecture)** для backend
+- **FSD (Feature-Sliced Design)** для frontend
+- **OpenAPI 3.1** как единственный источник правды
+- **TypeScript strict mode** везде
+- **Zod валидация** для всех inputs
 
-### Automated Quality
+### Автоматические проверки
 
-- Pre-commit hooks for formatting and type-checking
+- Pre-commit hooks для форматирования и типов
 - Test coverage thresholds (80% minimum)
-- Architecture validation (VSA/FSD rules)
+- Валидация архитектуры (VSA/FSD правила)
 - OpenAPI sync verification
 
 ---
 
-## Architecture Overview
+## Архитектура
 
 ### Ralph Loop
 
-The autonomous implementation orchestrator:
+Автономный оркестратор реализации:
 
 ```
 +----------------------------------------------------------+
@@ -88,30 +92,19 @@ The autonomous implementation orchestrator:
 
 **RALPH** = **R**elentless **A**utonomous **L**oop for **P**roduct **H**acking
 
-The loop continues until completion or an explicit blocker requiring human decision.
-
-### Subagent Pipeline
-
-1. **API Agent** - Defines the contract before implementation
-2. **Backend Agent** - Implements VSA vertical slice
-3. **Frontend Agent** - Implements FSD feature components
-4. **Test Agent** - Writes tests (TDD-first approach)
-5. **DevOps Agent** - Sets up environment and deployment
-6. **Validation Agent** - Final architecture and quality checks
+Цикл продолжается до завершения или явного блокера, требующего решения человека.
 
 ---
 
-## Directory Structure
-
-After installation, your `~/.claude/` directory will contain:
+## Структура после установки
 
 ```
 ~/.claude/
-├── CLAUDE.md              # Global instructions
-├── settings.json          # Claude Code settings
-├── mcp_config.json        # MCP server configuration
+├── CLAUDE.md              # Глобальные инструкции
+├── settings.json          # Настройки Claude Code
+├── mcp_config.json        # MCP серверы
 │
-├── agents/                # Subagent definitions
+├── agents/                # Агенты
 │   ├── api-agent.md
 │   ├── backend-agent.md
 │   ├── frontend-agent.md
@@ -119,155 +112,150 @@ After installation, your `~/.claude/` directory will contain:
 │   ├── devops-agent.md
 │   └── validation-agent.md
 │
-├── skills/                # Skill definitions
-│   ├── bmad/              # BMAD workflow skills
-│   ├── ralph-loop/        # Ralph Loop orchestrator
-│   ├── vsa-fsd/           # Architecture skills
-│   └── testing-modern/    # Testing strategies
+├── skills/                # Скиллы
+│   ├── provide/           # Основные шаги (step1-step7)
+│   ├── advanced/          # Дополнительные команды
+│   ├── help/              # Справка
+│   ├── vsa-fsd/           # Валидация архитектуры
+│   └── testing-modern/    # Стратегия тестирования
 │
-├── rules/                 # Development rules
+├── rules/                 # Правила разработки
 │   ├── api-first.md
 │   ├── fsd-architecture.md
 │   ├── vsa-architecture.md
 │   ├── typescript-strict.md
 │   └── testing-strategy.md
 │
-├── hooks/                 # Automation hooks
+├── hooks/                 # Автоматизация
 │   ├── auto-format.sh
 │   ├── typescript-preflight.sh
-│   ├── check-tests-pass.sh
-│   ├── vsa-validate.sh
-│   └── session-start-continuity.sh
+│   ├── backpressure-gate.sh
+│   └── ...
 │
-├── commands/              # Custom slash commands
-├── templates/             # Project templates
-└── scripts/               # Utility scripts
+├── commands/              # Кастомные команды
+├── templates/             # Шаблоны проектов
+└── scripts/               # Утилиты
 ```
 
 ---
 
 ## Workflow
 
-### 1. Initialize Project
+### Шаг 1: Инициализация проекта
 
 ```bash
-/init-project
+/step1-init
 ```
 
-Creates project structure with:
-- TypeScript configuration (strict mode)
-- ESLint and Prettier setup
-- Docker Compose for local development
+Создаёт структуру с:
+- TypeScript (strict mode)
+- ESLint и Prettier
+- Docker Compose для локальной разработки
 - OpenAPI template
-- VSA backend structure
-- FSD frontend structure
+- VSA backend структура
+- FSD frontend структура
 
-### 2. Start BMAD Workflow
-
-```bash
-/workflow-init
-```
-
-Initializes the BMAD (Business, Marketing, Architecture, Development) workflow.
-
-### 3. Create Product Brief
+### Шаг 2: Бизнес-бриф
 
 ```bash
-/product-brief
+/step2-brief
 ```
 
-Define your product vision, target audience, and success metrics.
+Определяет видение продукта, целевую аудиторию, метрики успеха.
 
-### 4. Generate PRD
+### Шаг 3: PRD
 
 ```bash
-/prd
+/step3-prd
 ```
 
-Creates detailed Product Requirements Document with user stories.
+Создаёт детальный Product Requirements Document с user stories.
 
-### 5. Design Architecture
+### Шаг 4: Архитектура
 
 ```bash
-/architecture
+/step4-arch
 ```
 
-Technical architecture document covering:
+Техническая архитектура:
 - System design
 - Database schema
 - API structure
-- Security considerations
+- Security
 
-### 6. Create Stories
-
-```bash
-/create-epics-and-stories
-```
-
-Breaks down PRD into implementable epics and user stories.
-
-### 7. Run Ralph Loop
+### Шаг 5: Планирование спринта
 
 ```bash
-/ralph-loop
+/step5-sprint
 ```
 
-Autonomous implementation of stories:
-- Processes stories sequentially
-- Each story goes through all 6 subagents
-- Continues until completion or blocker
-- Updates ledger with progress
+Разбивает PRD на эпики и user stories.
+
+### Шаг 6: Валидация
+
+```bash
+/step6-validate
+```
+
+Проверяет sprint plan и генерирует очередь задач.
+
+### Шаг 7: Автономная разработка
+
+```bash
+/step7-build
+```
+
+Автономная реализация:
+- Обрабатывает задачи последовательно
+- Каждая задача проходит через нужного агента
+- Продолжает до завершения или блокера
+- Автоматически коммитит
 
 ---
 
-## Commands Reference
+## Справочник команд
 
-### Project Setup
+### Основные команды (по порядку)
 
-| Command | Description |
-|---------|-------------|
-| `/init-project` | Create new project with full setup |
-| `/workflow-init` | Initialize BMAD workflow |
+| Команда | Описание |
+|---------|----------|
+| `/step1-init` | Создание структуры проекта |
+| `/step2-brief` | Бизнес-анализ требований |
+| `/step3-prd` | Документ требований |
+| `/step4-arch` | Техническая архитектура |
+| `/step5-sprint` | Планирование спринта |
+| `/step6-validate` | Валидация и очередь задач |
+| `/step7-build` | Автономная разработка |
 
-### BMAD Workflow
+### Дополнительные команды
 
-| Command | Description |
-|---------|-------------|
-| `/product-brief` | Create product brief |
-| `/prd` | Generate PRD from brief |
-| `/architecture` | Design technical architecture |
-| `/create-epics-and-stories` | Break down into stories |
+| Команда | Описание |
+|---------|----------|
+| `/help` | Справка |
+| `/commit` | Git commit (без Claude attribution) |
+| `/validate-all` | Полная валидация |
 
-### Implementation
+### Advanced команды
 
-| Command | Description |
-|---------|-------------|
-| `/ralph-loop` | Start autonomous implementation |
-| `/ralph-loop --resume` | Resume after blocker |
-| `/ralph-loop --batch` | Process multiple stories |
-
-### Validation
-
-| Command | Description |
-|---------|-------------|
-| `/validate-all` | Run full validation suite |
-| `/validate:vsa` | Check VSA architecture |
-| `/validate:fsd` | Check FSD architecture |
-| `/validate:api` | Verify OpenAPI sync |
-
-### Utilities
-
-| Command | Description |
-|---------|-------------|
-| `/commit` | Create git commit (no Claude attribution) |
-| `/create_handoff` | Create handoff document |
-| `/resume_handoff` | Resume from handoff |
+| Команда | Описание |
+|---------|----------|
+| `/advanced:brainstorm` | Мозговой штурм идей |
+| `/advanced:research` | Исследование темы |
+| `/advanced:create-agent` | Создание нового агента |
+| `/advanced:create-workflow` | Создание нового workflow |
+| `/advanced:create-story` | Создание user story |
+| `/advanced:create-ux-design` | UX дизайн интерфейса |
+| `/advanced:dev-story` | Ручная реализация story |
+| `/advanced:tech-spec` | Техническая спецификация |
+| `/advanced:workflow-init` | Инициализация workflow |
+| `/advanced:workflow-status` | Статус прогресса |
+| `/advanced:solutioning-gate-check` | Проверка архитектуры |
 
 ---
 
-## VSA Architecture (Backend)
+## VSA Архитектура (Backend)
 
-Vertical Slice Architecture organizes code by feature:
+Vertical Slice Architecture организует код по фичам:
 
 ```
 src/
@@ -275,8 +263,8 @@ src/
 │   └── users/
 │       └── create-user/
 │           ├── controller.ts    # HTTP handler
-│           ├── service.ts       # Business logic
-│           ├── repository.ts    # Data access
+│           ├── service.ts       # Бизнес-логика
+│           ├── repository.ts    # Доступ к данным
 │           ├── dto.ts           # Zod schemas
 │           └── index.ts         # Public API
 ├── shared/
@@ -287,40 +275,40 @@ src/
     └── schema.prisma
 ```
 
-**Rules:**
-- Each feature is self-contained
-- No cross-feature imports
-- Controller -> Service -> Repository hierarchy
-- All inputs validated with Zod
+**Правила:**
+- Каждая фича самодостаточна
+- Нет cross-feature импортов
+- Controller -> Service -> Repository иерархия
+- Все inputs валидируются Zod
 
 ---
 
-## FSD Architecture (Frontend)
+## FSD Архитектура (Frontend)
 
-Feature-Sliced Design organizes code by layers:
+Feature-Sliced Design организует код по слоям:
 
 ```
 src/
-├── app/           # Initialization, providers
-├── pages/         # Full pages (1 per route)
-├── widgets/       # Compound UI blocks
-├── features/      # Business features
-├── entities/      # Business entities
+├── app/           # Инициализация, providers
+├── pages/         # Полные страницы (1 на route)
+├── widgets/       # Составные UI блоки
+├── features/      # Бизнес-фичи
+├── entities/      # Бизнес-сущности
 └── shared/        # UI kit, hooks, utils, api
 ```
 
-**Import Rules (top to bottom only):**
+**Правила импортов (только вниз):**
 - `pages` -> widgets, features, entities, shared
 - `widgets` -> features, entities, shared
 - `features` -> entities, shared
 - `entities` -> shared
-- `shared` -> external packages only
+- `shared` -> только внешние пакеты
 
 ---
 
-## Testing Strategy
+## Стратегия тестирования
 
-Inverted Test Pyramid (70% integration):
+Перевёрнутая пирамида (70% интеграционных):
 
 ```
         /\
@@ -333,51 +321,51 @@ Inverted Test Pyramid (70% integration):
  /________________\
 ```
 
-- **Unit tests**: Pure functions, utilities (Vitest)
-- **Integration tests**: API endpoints, DB queries (Vitest + Supertest)
-- **E2E tests**: Critical user flows (Playwright MCP)
+- **Unit тесты**: Чистые функции, утилиты (Vitest)
+- **Integration тесты**: API endpoints, DB queries (Vitest + Supertest)
+- **E2E тесты**: Критические user flows (Playwright)
 
-**Minimum coverage: 80%**
+**Минимум coverage: 80%**
 
 ---
 
-## Requirements
+## Требования
 
-### Required
+### Обязательно
 
-- **Claude Code** - CLI installed and authenticated
+- **Claude Code** - CLI установлен и авторизован
 - **Node.js** >= 18.x
 - **Git** >= 2.x
-- **pnpm** >= 8.x (installed automatically if missing)
+- **pnpm** >= 8.x
 
-### Optional
+### Опционально
 
-- **Docker** >= 24.x (for local development)
-- **jq** (for smart settings merging during install)
+- **Docker** >= 24.x (для локальной разработки)
+- **jq** (для умного merge settings при установке)
 
-### Check Prerequisites
+### Проверка
 
 ```bash
 node --version  # >= 18.x
 git --version   # >= 2.x
 pnpm --version  # >= 8.x
-docker --version  # >= 24.x (optional)
+docker --version  # >= 24.x (опционально)
 ```
 
 ---
 
-## Installation
+## Установка
 
-### One-Line Install
+### Одной командой
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
 ```
 
-### Manual Install
+### Вручную
 
 ```bash
-git clone https://github.com/kirill/claude-starter.git
+git clone https://github.com/lindwerg/claude-starter.git
 cd claude-starter
 ./install.sh
 ```
@@ -388,32 +376,23 @@ cd claude-starter
 irm https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.ps1 | iex
 ```
 
-### What Gets Installed
+### Что устанавливается
 
 1. Skills, rules, hooks, commands, agents -> `~/.claude/`
-2. Settings merged (preserves your existing settings)
-3. MCP config merged (preserves your existing servers)
-4. Templates and scripts installed
-5. Backup of existing config created
+2. Settings мержатся (сохраняют существующие)
+3. MCP config мержится (сохраняет существующие серверы)
+4. Templates и scripts
+5. Backup существующего конфига
 
 ---
 
-## Uninstall
+## Удаление
 
 ```bash
 ./uninstall.sh
 ```
 
-Or manually:
-
-```bash
-rm -rf ~/.claude/skills/bmad
-rm -rf ~/.claude/skills/ralph-loop
-rm -rf ~/.claude/agents
-# etc.
-```
-
-Restore from backup:
+Восстановление из backup:
 
 ```bash
 cp -r ~/.claude-backup-<timestamp>/* ~/.claude/
@@ -421,14 +400,11 @@ cp -r ~/.claude-backup-<timestamp>/* ~/.claude/
 
 ---
 
-## Upgrading
+## Обновление
 
 ```bash
-# Pull latest version
 cd claude-starter
 git pull origin main
-
-# Re-run installer (merges settings)
 ./install.sh
 ```
 
@@ -436,65 +412,34 @@ git pull origin main
 
 ## Troubleshooting
 
-### Skills not loading
+### Skills не загружаются
 
-1. Restart Claude Code
-2. Check `~/.claude/settings.json` for syntax errors
-3. Verify skill files exist in `~/.claude/skills/`
+1. Перезапусти Claude Code
+2. Проверь `~/.claude/settings.json` на синтаксические ошибки
+3. Убедись что файлы скиллов существуют в `~/.claude/skills/`
 
-### Hooks not running
+### Hooks не работают
 
-1. Check hook files are executable: `chmod +x ~/.claude/hooks/*.sh`
-2. Verify hooks are registered in `~/.claude/settings.json`
-3. Test manually: `echo '{"test": true}' | ~/.claude/hooks/auto-format.sh`
+1. Проверь права: `chmod +x ~/.claude/hooks/*.sh`
+2. Проверь регистрацию в `~/.claude/settings.json`
+3. Тест вручную: `echo '{"test": true}' | ~/.claude/hooks/auto-format.sh`
 
-### MCP servers not connecting
+### MCP серверы не подключаются
 
-1. Check `~/.claude/mcp_config.json` syntax
-2. Verify server dependencies installed
-3. Check server logs in Claude Code output
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/my-feature`
-3. Make changes
-4. Test installation on clean system
-5. Submit pull request
+1. Проверь синтаксис `~/.claude/mcp_config.json`
+2. Убедись что зависимости серверов установлены
+3. Проверь логи в выводе Claude Code
 
 ---
 
-## License
+## Лицензия
 
 MIT License
 
-Copyright (c) 2024
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
 ---
 
-## Acknowledgments
+## Благодарности
 
 - [Claude Code](https://claude.ai/claude-code) by Anthropic
 - [Feature-Sliced Design](https://feature-sliced.design/)
 - [Vertical Slice Architecture](https://www.jimmybogard.com/vertical-slice-architecture/)
-- [BMAD Method](https://bmad.dev/)

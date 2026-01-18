@@ -1,0 +1,73 @@
+# TDD Preset - Red/Green/Refactor workflow
+name: tdd
+description: Test-Driven Development workflow
+
+# Task order enforcement
+task_order:
+  - type: test
+    phase: red
+    acceptance_must_include: "FAILING"
+  - type: backend
+    phase: green
+    acceptance_must_include: "PASS"
+  - type: frontend
+    phase: green
+    acceptance_must_include: "PASS"
+  - type: test
+    phase: refactor
+    optional: true
+
+# Quality gates specific to TDD
+quality_gates:
+  - name: typecheck
+    command: pnpm typecheck
+    required: true
+
+  - name: lint
+    command: pnpm lint
+    required: true
+
+  - name: test
+    command: pnpm test
+    required: true
+    # In RED phase, tests MUST fail
+    # In GREEN phase, tests MUST pass
+
+# Subagent mapping (our agents)
+subagents:
+  test: test-agent
+  backend: backend-agent
+  frontend: frontend-agent
+  api: api-agent
+  devops: devops-agent
+
+# Prompts per phase
+prompts:
+  red: |
+    TDD RED PHASE: Write a FAILING test.
+
+    Your job is to:
+    1. Write a test that describes the expected behavior
+    2. The test MUST FAIL (implementation doesn't exist yet)
+    3. Output the failing test error message
+
+    DO NOT implement the feature. Only write the test.
+    After writing, run `pnpm test` and confirm it FAILS.
+
+  green: |
+    TDD GREEN PHASE: Make the test pass.
+
+    Your job is to:
+    1. Read the failing test(s)
+    2. Write MINIMAL code to make the test pass
+    3. Do not over-engineer or add extra features
+    4. Run `pnpm test` and confirm ALL tests PASS.
+
+  refactor: |
+    TDD REFACTOR PHASE: Clean up the code.
+
+    Your job is to:
+    1. Improve code quality without changing behavior
+    2. Remove duplication
+    3. Improve naming
+    4. Tests MUST still pass after refactoring

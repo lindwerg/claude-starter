@@ -16,7 +16,17 @@ mkdir -p .bmad && echo "$(date -Iseconds)" > .bmad/ralph-in-progress
 
 Run this Bash command RIGHT NOW before reading task queue.
 
-### 2. Use Subagents for Tasks
+### 2. Cleanup Stale Subagent Markers
+
+Before each iteration, remove any stale subagent markers:
+
+```bash
+rm -f .bmad/subagent-active
+```
+
+This prevents stale markers from previous crashed subagents.
+
+### 3. Use Subagents for Tasks (ENFORCED BY HOOK)
 
 Ralph MUST execute each task via Task tool subagent. NEVER execute tasks directly in main context.
 
@@ -292,17 +302,93 @@ After subagent completes:
    pnpm test:run --filter="{feature}"
    ```
 
-### 4.5. Quality Gates (MANDATORY)
+### 4.5. Quality Gates — BACKPRESSURE (MANDATORY)
 
-Before marking task as done, run ALL:
+**BACKPRESSURE = задача НЕ МОЖЕТ быть done пока gates не пройдут.**
 
-1. **TypeScript**: `pnpm typecheck` — ZERO errors
-2. **Lint**: `pnpm lint` — ZERO warnings
-3. **Tests**: `pnpm test` — ALL PASS
+This is the most important section. Without backpressure, Ralph can "cheat" and mark tasks done without real completion.
 
-If ANY fails → task status = "retrying", fix issues first.
+#### Gate Commands
 
-**CRITICAL**: Empty output from `tsc --noEmit` = SUCCESS (no errors)
+Run ALL gates before marking any task as done:
+
+```bash
+# 1. TypeScript (MUST PASS)
+pnpm typecheck
+# Empty output = SUCCESS (no errors)
+
+# 2. Lint (MUST PASS)
+pnpm lint
+# Exit code 0 = SUCCESS
+
+# 3. Tests (MUST PASS)
+pnpm test
+# All tests green = SUCCESS
+```
+
+#### Gate Logic
+
+```
+BEFORE marking task as DONE:
+  ├── Run: pnpm typecheck
+  │     └── Exit 0? → PASS
+  │     └── Exit 1? → FAIL → task stays in_progress, fix errors
+  │
+  ├── Run: pnpm lint
+  │     └── Exit 0? → PASS
+  │     └── Exit 1? → FAIL → task stays in_progress, fix errors
+  │
+  └── Run: pnpm test
+        └── All pass? → PASS
+        └── Any fail? → FAIL → task stays in_progress, fix errors
+
+ALL THREE PASS → task can be marked DONE
+ANY FAILS → task CANNOT be marked done, must fix first
+```
+
+#### CRITICAL Rules
+
+1. **Empty output = SUCCESS** for `tsc --noEmit` (no errors means nothing to print)
+2. **Check exit code**, not output presence
+3. **NO EXCEPTIONS** — even "small" tasks must pass gates
+4. **Fix immediately** — don't skip to next task if gates fail
+
+#### Acceptance Criteria → Required Tests
+
+Each acceptance criterion SHOULD have a corresponding test:
+
+```yaml
+acceptance:
+  - "POST /characters creates character"   # → test: POST returns 201
+  - "GET /characters returns list"         # → test: GET returns array
+  - "Validation rejects invalid data"      # → test: POST returns 400
+
+# Task is NOT done until tests for EACH criterion exist and PASS
+```
+
+#### Gate Failure Response
+
+```yaml
+# If gates fail:
+tasks:
+  - id: "TASK-004-C"
+    status: "in_progress"  # NOT done!
+    gate_failures:
+      - gate: "typecheck"
+        error: "Property 'foo' does not exist on type 'Bar'"
+        file: "src/features/auth/service.ts:42"
+      - gate: "test"
+        error: "Expected 201, received 500"
+        test: "auth.integration.test.ts"
+    retries: 1
+```
+
+#### Backpressure Philosophy
+
+> "Don't prescribe how; create gates that reject bad work."
+> — ralph-orchestrator
+
+Ralph can try any approach, but the work MUST pass gates. This allows creativity while ensuring quality.
 
 ### 5. Update Queue
 
@@ -361,13 +447,51 @@ Commit message format:
 - `feat(auth): implement register controller`
 - `test(auth): add integration tests`
 
-### 6.5. Context Preservation
+### 6.5. Context Preservation & Scratchpad
 
 Before moving to next task, ensure future Ralph has context:
 
 1. **Read execution log**: `cat .bmad/ralph-execution-log.jsonl | tail -5`
 2. **Check recent receipts**: Look at last 3 completed tasks in task-queue.yaml
 3. **Understand dependencies**: What files were created that this task needs
+4. **Update scratchpad**: Record learnings, blockers, decisions
+
+#### Scratchpad (Shared Memory)
+
+File: `.bmad/scratchpad.md` — persists across /clear and context resets.
+
+```markdown
+# Ralph Scratchpad
+
+## Active Blockers
+- [ ] Redis connection timeout in tests — need to mock
+- [ ] Prisma generate fails without DB running
+
+## Key Decisions
+- **Auth**: Using JWT with 7-day expiry (not sessions)
+- **Validation**: Zod over Yup (better TS inference)
+- **Testing**: MSW for API mocking (not nock)
+
+## Warnings
+- DO NOT modify `shared/config/env.ts` — breaks CI
+- Legacy code in `utils/old/` — ignore, will be deleted
+
+## Learnings
+- `pino` logger needs `exactOptionalPropertyTypes: false` or explicit undefined
+- Express Router type: `Router` not `express.Router`
+- Vitest needs `globals: true` for jest-compatible syntax
+
+## File Patterns
+- Controllers: `features/{name}/{slice}/controller.ts`
+- Services: `features/{name}/{slice}/service.ts`
+- Tests: `*.integration.test.ts` for API, `*.test.ts` for unit
+```
+
+#### Update Scratchpad When:
+- Encounter unexpected error → add to Warnings
+- Make architectural decision → add to Key Decisions
+- Learn something useful → add to Learnings
+- Hit a blocker → add to Active Blockers (with checkbox)
 
 **This prevents duplicate work and provides learning from past iterations.**
 

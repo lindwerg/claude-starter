@@ -2,8 +2,33 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/subagent-enforcement.sh",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/backpressure-gate.sh",
+            "timeout": 30000
+          }
+        ]
+      },
+      {
         "matcher": "Write",
         "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/subagent-enforcement.sh",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/backpressure-gate.sh",
+            "timeout": 30000
+          },
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sprint-plan-validator.sh",
@@ -20,6 +45,11 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/typescript-preflight.sh",
             "timeout": 40000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/task-verification.sh",
+            "timeout": 60000
           },
           {
             "type": "command",
@@ -43,6 +73,11 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sprint-plan-post-validator.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/task-verification.sh",
+            "timeout": 60000
           },
           {
             "type": "command",
@@ -90,16 +125,6 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/pre-compact-save-state.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/check-tests-pass.sh"
           }
         ]
       }

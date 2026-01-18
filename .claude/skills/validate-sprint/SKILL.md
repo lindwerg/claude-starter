@@ -145,11 +145,35 @@ summary:
 
 current_task: null
 
+# BACKPRESSURE: Quality gates that MUST pass before any task is marked done
+quality_gates:
+  - name: "typecheck"
+    command: "pnpm typecheck"
+    required: true
+    description: "TypeScript compilation must have zero errors"
+
+  - name: "lint"
+    command: "pnpm lint"
+    required: true
+    description: "ESLint must pass with zero errors"
+
+  - name: "test"
+    command: "pnpm test"
+    required: true
+    description: "All tests must pass"
+
 # Execution context for future Ralph iterations
 execution_context:
   last_updated: null
   tests_status: "unknown"  # passing | failing | unknown
   recent_learnings: []
+
+# Shared memory across Ralph iterations (survives /clear)
+scratchpad:
+  blockers: []
+  decisions: []
+  warnings: []
+  learnings: []
 
 tasks:
   - id: "TASK-001-A"

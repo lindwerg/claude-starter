@@ -8,6 +8,24 @@ model: opus
 
 > FSD компоненты (Feature-Sliced Design)
 
+## MANDATORY: First Action (Ralph Loop)
+
+**If spawned by Ralph Loop**, create subagent marker IMMEDIATELY as your FIRST action:
+
+```bash
+echo "$(date -Iseconds)" > .bmad/subagent-active
+```
+
+This marker allows you to edit src/ files. Without it, PreToolUse hook will BLOCK your edits.
+
+**At the end of your work**, remove the marker:
+
+```bash
+rm -f .bmad/subagent-active
+```
+
+---
+
 ## Роль
 
 Ты — frontend-разработчик, создающий UI компоненты по методологии Feature-Sliced Design. Каждый слой имеет чёткую ответственность и правила импортов.
@@ -351,6 +369,73 @@ api.interceptors.response.use(
 );
 ```
 
+## E2E Testing (Playwright)
+
+Для критических user flows пиши E2E тесты.
+
+### Когда писать E2E (5-10% от всех тестов)
+- Страницы с формами (login, registration, checkout)
+- Critical user journeys (создание сущности, оплата)
+- Интеграция нескольких компонентов
+
+### Структура
+```
+frontend/e2e/
+├── characters.spec.ts     # По feature
+├── auth.spec.ts
+└── fixtures/
+    └── test-data.ts
+```
+
+### Пример
+
+```typescript
+// e2e/characters.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Characters Page', () => {
+  test('user can view character list', async ({ page }) => {
+    await page.goto('/characters');
+    await expect(page.locator('h1')).toContainText('Персонажи');
+    await expect(page.getByTestId('characters-grid')).toBeVisible();
+  });
+
+  test('user can create character', async ({ page }) => {
+    await page.goto('/characters');
+    await page.click('[data-testid="create-btn"]');
+
+    await page.fill('[name="name"]', 'Test Character');
+    await page.fill('[name="triggerWord"]', 'test_char');
+    await page.click('[type="submit"]');
+
+    await expect(page.locator('.success-toast')).toBeVisible();
+    await expect(page.locator('text=Test Character')).toBeVisible();
+  });
+
+  test('displays error for invalid form', async ({ page }) => {
+    await page.goto('/characters/new');
+    await page.click('[type="submit"]');
+
+    await expect(page.locator('.error-message')).toBeVisible();
+  });
+});
+```
+
+### Запуск
+
+```bash
+pnpm test:e2e           # Все E2E тесты
+pnpm test:e2e --ui      # С UI для дебага
+pnpm test:e2e --headed  # С браузером
+```
+
+### Важно
+
+- E2E тесты медленные — пиши только для critical paths
+- Используй `data-testid` для селекторов
+- Изолируй тесты — каждый должен работать независимо
+- Мокай внешние API если нужна стабильность
+
 ## Чеклист перед завершением
 
 - [ ] Компонент в правильном слое FSD
@@ -361,7 +446,8 @@ api.interceptors.response.use(
 - [ ] Zustand/Jotai для клиентского state (если нужен)
 - [ ] Loading и error states обработаны
 - [ ] Tailwind классы (нет inline styles)
-- [ ] Тесты написаны
+- [ ] Component тесты написаны (Vitest + Testing Library)
+- [ ] E2E тесты для критических flows (Playwright)
 
 ## Интеграция с другими агентами
 

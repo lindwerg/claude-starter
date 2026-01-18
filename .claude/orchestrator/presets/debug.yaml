@@ -1,0 +1,68 @@
+# Debug Preset - Systematic debugging workflow
+name: debug
+description: Debug issues systematically
+
+# Hat sequence for debugging
+hats:
+  - investigator
+  - fixer
+  - verifier
+
+# Subagent for investigation
+subagents:
+  investigate: debug-agent
+  fix: backend-agent  # or frontend-agent based on context
+  verify: test-agent
+
+# Quality gates
+quality_gates:
+  - name: typecheck
+    command: pnpm typecheck
+    required: true
+
+  - name: test
+    command: pnpm test
+    required: true
+    must_pass_specific: true  # The specific failing test must now pass
+
+prompts:
+  investigate: |
+    DEBUG INVESTIGATION PHASE
+
+    Your job is to:
+    1. Reproduce the issue
+    2. Find the root cause (not symptoms)
+    3. Document the bug location (file:line)
+    4. Propose a fix strategy
+
+    DO NOT fix yet. Only investigate.
+
+    Output format:
+    <investigation>
+    - Issue: [description]
+    - Root cause: [file:line] - [explanation]
+    - Proposed fix: [strategy]
+    </investigation>
+
+  fix: |
+    DEBUG FIX PHASE
+
+    Based on the investigation:
+    {{investigation}}
+
+    Your job is to:
+    1. Implement the proposed fix
+    2. Keep changes minimal
+    3. Add regression test if missing
+
+    DO NOT refactor unrelated code.
+
+  verify: |
+    DEBUG VERIFICATION PHASE
+
+    Verify the fix:
+    1. Run the specific test that was failing
+    2. Run all related tests
+    3. Confirm no regressions
+
+    Output: VERIFIED or REGRESSION_FOUND

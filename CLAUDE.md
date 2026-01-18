@@ -1,43 +1,43 @@
-# Claude Starter Kit - Global Instructions
+# Provide Starter Kit - Глобальные инструкции
 
-> **Communication**: Always respond in Russian unless user specifies otherwise.
+> **Язык**: Всегда отвечай на русском.
 
-## Core Principles
+## Основные принципы
 
-1. **Architecture First** — FSD (frontend) + VSA (backend). No exceptions.
-2. **Spec-Driven** — OpenAPI.yaml is the contract. Never code without specification.
-3. **Production-Ready** — TypeScript strict, tests, error handling from day one.
-4. **Test Pyramid Inverted** — 70% integration, 20% unit, 10% E2E.
+1. **Architecture First** — FSD (frontend) + VSA (backend). Без исключений.
+2. **Spec-Driven** — OpenAPI.yaml — единственный источник правды для API.
+3. **Production-Ready** — TypeScript strict, тесты, error handling с первого дня.
+4. **Inverted Pyramid** — 70% интеграционных, 20% unit, 10% E2E.
 
-## Technology Stack
+## Технологический стек
 
 - **Frontend**: React 18+, TypeScript (strict), TanStack Query, Zustand, Tailwind CSS
 - **Backend**: Node.js, Express/Fastify, Prisma, PostgreSQL, Zod validation
-- **Tools**: pnpm, Vite, Docker, Vitest, Playwright
+- **Инструменты**: pnpm, Vite, Docker, Vitest, Playwright
 
-## FSD Architecture (Frontend)
+## FSD Архитектура (Frontend)
 
 ```
 src/
-├── app/          # Initialization, providers, global styles
-├── pages/        # Full pages (1 page = 1 route)
-├── widgets/      # Standalone UI blocks with state
-├── features/     # Business features (reusable actions)
-├── entities/     # Business entities (User, Product)
-└── shared/       # Reusable code (ui/, lib/, hooks/, api/, types/)
+├── app/          # Инициализация, providers, global styles
+├── pages/        # Полные страницы (1 page = 1 route)
+├── widgets/      # Независимые UI блоки со state
+├── features/     # Бизнес-фичи (переиспользуемые)
+├── entities/     # Бизнес-сущности (User, Product)
+└── shared/       # Общий код (ui/, lib/, hooks/, api/, types/)
 ```
 
-### FSD Import Rules
+### Правила импортов FSD
 
 ```
-ALLOWED:                    FORBIDDEN:
-pages → all below           features → features
-widgets → features+below    entities → features/widgets/pages
-features → entities+shared  shared → anything above
-entities → shared only
+МОЖНО:                      НЕЛЬЗЯ:
+pages → всё ниже            features → features
+widgets → features+ниже     entities → features/widgets/pages
+features → entities+shared  shared → что-либо выше
+entities → только shared
 ```
 
-## VSA Architecture (Backend)
+## VSA Архитектура (Backend)
 
 ```
 src/
@@ -50,42 +50,54 @@ src/
 │           ├── dto.ts (Zod)
 │           └── index.ts
 ├── shared/             # middleware/, utils/, types/, config/
-├── openapi.yaml        # API contract (source of truth)
+├── openapi.yaml        # API контракт (source of truth)
 └── prisma/schema.prisma
 ```
 
-## Code Quality Rules
+## Правила качества кода
 
-### Always
-- Full TypeScript typing (no `any`, no `as unknown`)
-- Tests alongside code (integration first)
-- Error handling everywhere
-- Zod validation for all inputs
-- Update openapi.yaml when API changes
+### Всегда
 
-### Never
-- Violate FSD/VSA architecture
-- Skip null/undefined checks
-- Use `@ts-ignore` or `!` non-null assertion
-- Hardcode values (magic numbers/strings)
+- Полная TypeScript типизация (no `any`, no `as unknown`)
+- Тесты рядом с кодом (integration first)
+- Error handling везде
+- Zod валидация для всех inputs
+- Обновлять openapi.yaml при изменении API
 
-## Quick Start
+### Никогда
+
+- Нарушать FSD/VSA архитектуру
+- Пропускать null/undefined проверки
+- Использовать `@ts-ignore` или `!` non-null assertion
+- Хардкодить значения (magic numbers/strings)
+
+## Быстрый старт
 
 ```bash
-# After installing this starter kit:
 mkdir my-app && cd my-app
-/init-project              # Creates FSD+VSA structure + Docker
-/workflow-init             # Initialize BMAD workflow
-/ralph-loop                # Autonomous development
-/commit                    # Commit changes
+/step1-init        # Создание структуры проекта
 ```
 
-## BMAD Workflow
+## 7 шагов разработки
 
-```
-/product-brief    → Business requirements
-/prd              → Product Requirements Document
-/architecture     → System design (auto-selects FSD+VSA)
-/sprint-planning  → Break into stories
-/dev-story        → Implement story
-```
+| Шаг | Команда | Описание |
+|-----|---------|----------|
+| 1 | `/step1-init` | Создание структуры проекта |
+| 2 | `/step2-brief` | Бизнес-анализ требований |
+| 3 | `/step3-prd` | Документ требований (PRD) |
+| 4 | `/step4-arch` | Техническая архитектура |
+| 5 | `/step5-sprint` | Планирование спринта |
+| 6 | `/step6-validate` | Валидация и очередь задач |
+| 7 | `/step7-build` | Автономная разработка |
+
+## Дополнительные команды
+
+- `/help` — Справка
+- `/commit` — Git commit (без Claude attribution)
+- `/validate-all` — Полная валидация
+
+## Advanced команды
+
+- `/advanced:brainstorm` — Мозговой штурм
+- `/advanced:research` — Исследование темы
+- `/advanced:workflow-status` — Статус прогресса

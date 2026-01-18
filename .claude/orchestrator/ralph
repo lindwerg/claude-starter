@@ -1,0 +1,438 @@
+#!/bin/bash
+###############################################################################
+# RALPH ORCHESTRATOR
+# External CLI that CONTROLS Claude, not instructions Claude follows
+#
+# Usage:
+#   ralph                    # Start fresh
+#   ralph --resume           # Resume from last task
+#   ralph --preset tdd       # Use TDD preset
+#   ralph --hat builder      # Use specific hat/persona
+#
+# Architecture:
+#   ralph (this script) → spawns claude → checks gates → decides next action
+#   Claude does NOT control itself - ralph controls Claude
+###############################################################################
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Config
+RALPH_DIR=".bmad"
+TASK_QUEUE="$RALPH_DIR/task-queue.yaml"
+PROGRESS_FILE="$RALPH_DIR/ralph-progress.yaml"
+EVENTS_DIR="$RALPH_DIR/events"
+SCRATCHPAD="$RALPH_DIR/scratchpad.md"
+MAX_ITERATIONS=100
+MAX_RETRIES_PER_TASK=3
+
+# Parse arguments
+RESUME=false
+PRESET=""
+HAT=""
+SKIP_PERMISSIONS=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --resume|-r)
+            RESUME=true
+            shift
+            ;;
+        --preset|-p)
+            PRESET="$2"
+            shift 2
+            ;;
+        --hat)
+            HAT="$2"
+            shift 2
+            ;;
+        --dangerously-skip-permissions)
+            SKIP_PERMISSIONS=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: ralph [options]"
+            echo "  --resume, -r              Resume from last task"
+            echo "  --preset, -p <name>       Use preset (tdd, debug)"
+            echo "  --hat <name>              Use specific hat/persona"
+            echo "  --dangerously-skip-permissions  Skip Claude permission prompts"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Unknown option: $1${NC}"
+            exit 1
+            ;;
+    esac
+done
+
+#==============================================================================
+# FUNCTIONS
+#==============================================================================
+
+log_info() {
+    echo -e "${BLUE}[ralph]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[ralph]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[ralph]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ralph]${NC} $1"
+}
+
+log_event() {
+    local event_type="$1"
+    local payload="$2"
+    local timestamp=$(date -Iseconds)
+
+    mkdir -p "$EVENTS_DIR"
+    echo "{\"type\":\"$event_type\",\"timestamp\":\"$timestamp\",\"payload\":$payload}" >> "$EVENTS_DIR/events.jsonl"
+}
+
+#------------------------------------------------------------------------------
+# QUALITY GATES (External Enforcement)
+#------------------------------------------------------------------------------
+
+run_gates() {
+    log_info "Running quality gates..."
+
+    local gates_passed=true
+    local gate_results=""
+
+    # Gate 1: TypeScript
+    if [ -f "tsconfig.json" ] || [ -f "backend/tsconfig.json" ]; then
+        log_info "  → typecheck..."
+        if pnpm typecheck > /tmp/ralph-typecheck.log 2>&1; then
+            gate_results+="typecheck:pass "
+        else
+            gate_results+="typecheck:FAIL "
+            gates_passed=false
+        fi
+    fi
+
+    # Gate 2: Lint
+    if [ -f "eslint.config.js" ] || [ -f ".eslintrc.js" ]; then
+        log_info "  → lint..."
+        if pnpm lint > /tmp/ralph-lint.log 2>&1; then
+            gate_results+="lint:pass "
+        else
+            gate_results+="lint:FAIL "
+            gates_passed=false
+        fi
+    fi
+
+    # Gate 3: Tests
+    log_info "  → test..."
+    if pnpm test > /tmp/ralph-test.log 2>&1; then
+        gate_results+="test:pass "
+    else
+        gate_results+="test:FAIL "
+        gates_passed=false
+    fi
+
+    if $gates_passed; then
+        log_success "All gates passed: $gate_results"
+        return 0
+    else
+        log_error "Gates failed: $gate_results"
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+# TASK QUEUE OPERATIONS
+#------------------------------------------------------------------------------
+
+get_current_task() {
+    yq -r '.current_task // ""' "$TASK_QUEUE" 2>/dev/null
+}
+
+get_next_pending_task() {
+    # Simple: just get first pending task
+    # Dependencies are already ordered in task-queue.yaml
+    yq -r '.tasks[] | select(.status == "pending") | .id' "$TASK_QUEUE" 2>/dev/null | head -1
+}
+
+get_task_details() {
+    local task_id="$1"
+    yq ".tasks[] | select(.id == \"$task_id\")" "$TASK_QUEUE"
+}
+
+update_task_status() {
+    local task_id="$1"
+    local status="$2"
+    local extra="$3"  # Optional: receipt, error, etc.
+
+    yq -i "(.tasks[] | select(.id == \"$task_id\")).status = \"$status\"" "$TASK_QUEUE"
+
+    if [ -n "$extra" ]; then
+        yq -i "(.tasks[] | select(.id == \"$task_id\")).receipt = \"$extra\"" "$TASK_QUEUE"
+    fi
+
+    # Update summary
+    local completed=$(yq '[.tasks[] | select(.status == "done")] | length' "$TASK_QUEUE")
+    local blocked=$(yq '[.tasks[] | select(.status == "blocked")] | length' "$TASK_QUEUE")
+    yq -i ".summary.completed_tasks = $completed" "$TASK_QUEUE"
+    yq -i ".summary.blocked_tasks = $blocked" "$TASK_QUEUE"
+}
+
+set_current_task() {
+    local task_id="$1"
+    yq -i ".current_task = \"$task_id\"" "$TASK_QUEUE"
+}
+
+get_task_retries() {
+    local task_id="$1"
+    yq -r ".tasks[] | select(.id == \"$task_id\") | .retries // 0" "$TASK_QUEUE"
+}
+
+increment_task_retries() {
+    local task_id="$1"
+    yq -i "(.tasks[] | select(.id == \"$task_id\")).retries += 1" "$TASK_QUEUE"
+}
+
+#------------------------------------------------------------------------------
+# CLAUDE EXECUTION
+#------------------------------------------------------------------------------
+
+build_task_prompt() {
+    local task_id="$1"
+    local task=$(get_task_details "$task_id")
+
+    local story_id=$(echo "$task" | yq -r '.story_id')
+    local title=$(echo "$task" | yq -r '.title')
+    local type=$(echo "$task" | yq -r '.type')
+    local outputs=$(echo "$task" | yq -r '.outputs | join(", ")')
+    local acceptance=$(echo "$task" | yq -r '.acceptance | join("\n- ")')
+    local depends_on=$(echo "$task" | yq -r '.depends_on | join(", ")')
+
+    cat << EOF
+Execute atomic task from Ralph Loop.
+
+## Task
+- ID: $task_id
+- Story: $story_id
+- Title: $title
+- Type: $type
+
+## Required Outputs
+$outputs
+
+## Acceptance Criteria
+- $acceptance
+
+## Dependencies (already completed)
+$depends_on
+
+## Instructions
+1. Read relevant files from dependencies
+2. Implement following VSA/FSD architecture
+3. Verify all acceptance criteria are met
+4. When done, output: <ralph-done>task completed</ralph-done>
+5. If blocked, output: <ralph-blocked>reason</ralph-blocked>
+
+Focus only on this task. Do not modify other files.
+EOF
+}
+
+run_claude_task() {
+    local task_id="$1"
+    local prompt=$(build_task_prompt "$task_id")
+
+    log_info "Spawning Claude for task: $task_id"
+    log_event "task_started" "{\"task_id\":\"$task_id\"}"
+
+    # Save prompt to temp file for claude -p
+    local prompt_file=$(mktemp)
+    echo "$prompt" > "$prompt_file"
+
+    # Run Claude in non-interactive mode
+    local output
+    local claude_cmd="claude -p"
+    if $SKIP_PERMISSIONS; then
+        claude_cmd="$claude_cmd --dangerously-skip-permissions"
+    fi
+
+    log_info "Running Claude for: $task_id"
+    output=$($claude_cmd "$(cat $prompt_file)" 2>&1) || true
+    rm -f "$prompt_file"
+
+    # Log output length
+    local output_len=${#output}
+    log_info "Claude output: $output_len chars"
+
+    # Check for completion markers
+    if echo "$output" | grep -q "<ralph-done>"; then
+        log_success "Task completed: $task_id"
+        return 0
+    elif echo "$output" | grep -q "<ralph-blocked>"; then
+        local reason=$(echo "$output" | grep -oP '(?<=<ralph-blocked>).*(?=</ralph-blocked>)' || echo "unknown")
+        log_error "Task blocked: $reason"
+        return 2
+    else
+        log_warn "No completion marker found"
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+# MAIN LOOP
+#------------------------------------------------------------------------------
+
+main() {
+    echo ""
+    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║                     RALPH ORCHESTRATOR                         ║${NC}"
+    echo -e "${CYAN}║         External CLI controlling Claude Code                   ║${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check prerequisites
+    if [ ! -f "$TASK_QUEUE" ]; then
+        log_error "No task queue found: $TASK_QUEUE"
+        log_info "Run /validate-sprint first to generate task queue"
+        exit 1
+    fi
+
+    if ! command -v yq &> /dev/null; then
+        log_error "yq not installed. Run: brew install yq"
+        exit 1
+    fi
+
+    if ! command -v claude &> /dev/null; then
+        log_error "claude CLI not found"
+        exit 1
+    fi
+
+    # Create progress marker
+    mkdir -p "$RALPH_DIR"
+    echo "$(date -Iseconds)" > "$RALPH_DIR/ralph-in-progress"
+
+    # Load preset if specified
+    if [ -n "$PRESET" ]; then
+        log_info "Loading preset: $PRESET"
+        # TODO: Load preset config
+    fi
+
+    # Main loop
+    local iteration=0
+
+    while [ $iteration -lt $MAX_ITERATIONS ]; do
+        iteration=$((iteration + 1))
+
+        echo ""
+        log_info "═══════════════════════════════════════════════════════════════"
+        log_info "Iteration $iteration / $MAX_ITERATIONS"
+        log_info "═══════════════════════════════════════════════════════════════"
+
+        # Find next task
+        local task_id=$(get_next_pending_task)
+
+        if [ -z "$task_id" ]; then
+            # Check if all done or blocked
+            local pending=$(yq '[.tasks[] | select(.status == "pending")] | length' "$TASK_QUEUE")
+            local blocked=$(yq '[.tasks[] | select(.status == "blocked")] | length' "$TASK_QUEUE")
+
+            if [ "$pending" -eq 0 ] && [ "$blocked" -eq 0 ]; then
+                echo ""
+                log_success "╔═══════════════════════════════════════════════════════════════╗"
+                log_success "║                    ALL TASKS COMPLETE!                         ║"
+                log_success "╚═══════════════════════════════════════════════════════════════╝"
+                log_event "sprint_complete" "{\"iterations\":$iteration}"
+                rm -f "$RALPH_DIR/ralph-in-progress"
+                exit 0
+            elif [ "$blocked" -gt 0 ]; then
+                log_error "Tasks blocked. Human intervention required."
+                log_event "blocked" "{\"blocked_count\":$blocked}"
+                exit 1
+            else
+                log_warn "No available tasks (dependencies not met)"
+                exit 1
+            fi
+        fi
+
+        # Set current task
+        set_current_task "$task_id"
+        update_task_status "$task_id" "in_progress"
+
+        local task_title=$(yq -r ".tasks[] | select(.id == \"$task_id\") | .title" "$TASK_QUEUE")
+        log_info "Task: $task_id - $task_title"
+
+        # Execute task via Claude
+        local result
+        if run_claude_task "$task_id"; then
+            result="done"
+        else
+            result="failed"
+        fi
+
+        # Run quality gates (EXTERNAL ENFORCEMENT)
+        if [ "$result" = "done" ]; then
+            if run_gates; then
+                # Gates passed - mark done
+                update_task_status "$task_id" "done" "Completed via Ralph orchestrator"
+                log_event "task_done" "{\"task_id\":\"$task_id\"}"
+
+                # Auto-commit
+                if git diff --quiet && git diff --cached --quiet; then
+                    log_info "No changes to commit"
+                else
+                    git add -A
+                    git commit -m "feat: $task_title" || true
+                    log_success "Changes committed"
+                fi
+            else
+                # Gates failed - retry or block
+                local retries=$(get_task_retries "$task_id")
+
+                if [ "$retries" -lt "$MAX_RETRIES_PER_TASK" ]; then
+                    increment_task_retries "$task_id"
+                    update_task_status "$task_id" "pending"
+                    log_warn "Gates failed. Retry $((retries + 1))/$MAX_RETRIES_PER_TASK"
+                    log_event "task_retry" "{\"task_id\":\"$task_id\",\"retry\":$((retries + 1))}"
+                else
+                    update_task_status "$task_id" "blocked" "Quality gates failed after $MAX_RETRIES_PER_TASK retries"
+                    log_error "Task blocked after max retries"
+                    log_event "task_blocked" "{\"task_id\":\"$task_id\",\"reason\":\"gates_failed\"}"
+                fi
+            fi
+        else
+            # Task failed
+            local retries=$(get_task_retries "$task_id")
+
+            if [ "$retries" -lt "$MAX_RETRIES_PER_TASK" ]; then
+                increment_task_retries "$task_id"
+                update_task_status "$task_id" "pending"
+                log_warn "Task failed. Retry $((retries + 1))/$MAX_RETRIES_PER_TASK"
+            else
+                update_task_status "$task_id" "blocked" "Failed after $MAX_RETRIES_PER_TASK retries"
+                log_error "Task blocked after max retries"
+            fi
+        fi
+
+        # Small delay between tasks
+        sleep 2
+    done
+
+    log_error "Max iterations reached ($MAX_ITERATIONS)"
+    rm -f "$RALPH_DIR/ralph-in-progress"
+    exit 1
+}
+
+#==============================================================================
+# ENTRY POINT
+#==============================================================================
+
+main "$@"

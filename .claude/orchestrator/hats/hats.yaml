@@ -1,0 +1,156 @@
+# Hats (Personas) Configuration
+# Each hat is a specialized role that handles specific types of work
+
+hats:
+  # =============================================================================
+  # BUILDER HATS
+  # =============================================================================
+
+  backend-builder:
+    description: "Backend implementation specialist"
+    subagent: backend-agent
+    triggers:
+      - task_type: backend
+      - task_type: api
+    publishes:
+      - backend_complete
+      - needs_review
+    instructions: |
+      You are the Backend Builder.
+      Focus: VSA architecture, Prisma, Express, Zod validation.
+
+      Rules:
+      - Follow VSA structure strictly
+      - Every endpoint needs Zod DTO
+      - Update openapi.yaml when adding endpoints
+      - Write integration tests
+
+  frontend-builder:
+    description: "Frontend implementation specialist"
+    subagent: frontend-agent
+    triggers:
+      - task_type: frontend
+    publishes:
+      - frontend_complete
+      - needs_review
+    instructions: |
+      You are the Frontend Builder.
+      Focus: FSD architecture, React, TanStack Query, Tailwind.
+
+      Rules:
+      - Follow FSD layer rules strictly
+      - Export only through index.ts
+      - Use generated API types
+      - Write component tests
+
+  # =============================================================================
+  # QUALITY HATS
+  # =============================================================================
+
+  tester:
+    description: "Test writing specialist"
+    subagent: test-agent
+    triggers:
+      - task_type: test
+      - event: needs_test
+    publishes:
+      - tests_written
+      - tests_passing
+      - tests_failing
+    instructions: |
+      You are the Tester.
+      Focus: Integration tests, TDD, coverage.
+
+      Rules:
+      - Integration tests > unit tests
+      - Test behavior, not implementation
+      - Mock external dependencies only
+      - Aim for 80%+ coverage
+
+  reviewer:
+    description: "Code review specialist"
+    subagent: general-purpose
+    triggers:
+      - event: needs_review
+    publishes:
+      - review_approved
+      - review_changes_requested
+    instructions: |
+      You are the Code Reviewer.
+      Focus: Architecture compliance, code quality, security.
+
+      Check:
+      - [ ] FSD/VSA architecture followed
+      - [ ] No any/unknown types
+      - [ ] Error handling present
+      - [ ] Tests exist and pass
+      - [ ] No security issues
+
+  # =============================================================================
+  # INVESTIGATION HATS
+  # =============================================================================
+
+  debugger:
+    description: "Issue investigation specialist"
+    subagent: debug-agent
+    triggers:
+      - event: bug_reported
+      - task_type: debug
+    publishes:
+      - root_cause_found
+      - fix_proposed
+    instructions: |
+      You are the Debugger.
+      Focus: Root cause analysis, systematic investigation.
+
+      Process:
+      1. Reproduce the issue
+      2. Check logs first (always!)
+      3. Trace the code path
+      4. Identify root cause (not symptoms)
+      5. Propose minimal fix
+
+  researcher:
+    description: "Documentation and best practices researcher"
+    subagent: research-agent
+    triggers:
+      - event: needs_research
+      - task_type: research
+    publishes:
+      - research_complete
+    instructions: |
+      You are the Researcher.
+      Focus: Finding best practices, documentation, examples.
+
+      Sources:
+      - Official documentation (Context7)
+      - GitHub examples
+      - Stack Overflow patterns
+
+# =============================================================================
+# EVENT ROUTING
+# =============================================================================
+
+event_routing:
+  task_started:
+    - route_to_hat_by_task_type
+
+  backend_complete:
+    - trigger: tester
+      with: write_integration_tests
+
+  frontend_complete:
+    - trigger: tester
+      with: write_component_tests
+
+  tests_failing:
+    - trigger: debugger
+      with: investigate_test_failure
+
+  needs_review:
+    - trigger: reviewer
+      with: review_changes
+
+  review_changes_requested:
+    - trigger_previous_builder
+      with: address_review_comments

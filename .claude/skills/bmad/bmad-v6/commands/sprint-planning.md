@@ -299,8 +299,37 @@ Total: 10 tasks, ~6 hours
    - Schema/types first
    - Backend before frontend
    - Implementation before tests
+   - **E2E tests AFTER all frontend tasks for the page**
 
-5. **Task ID format:**
+5. **E2E Tasks (Playwright) — MANDATORY for UI stories:**
+
+   For EACH story that creates user-facing pages, add E2E task at the END:
+
+   ```yaml
+   - id: "TASK-{story}-E2E"
+     story_id: "STORY-{N}"
+     title: "E2E tests for {feature} page"
+     type: "e2e"
+     depends_on: [last frontend task for this story]
+     outputs:
+       - "e2e/{feature}.spec.ts"
+     acceptance:
+       - "Tests critical user flows"
+       - "pnpm test:e2e passes"
+   ```
+
+   **Example:**
+   ```
+   STORY-006: Characters page
+   ├── TASK-006-A: Add Character schema (backend)
+   ├── TASK-006-B: Character API endpoints (api)
+   ├── TASK-006-C: CharacterCard entity (frontend)
+   ├── TASK-006-D: CharacterList widget (frontend)
+   ├── TASK-006-E: CreateCharacterForm feature (frontend)
+   └── TASK-006-E2E: E2E tests for Characters page (e2e)  ← MANDATORY
+   ```
+
+6. **Task ID format:**
    - `TASK-{story_number}-{letter}` (e.g., TASK-001-A, TASK-001-B)
    - Letters sequential within story
    - Easy to track relationships
