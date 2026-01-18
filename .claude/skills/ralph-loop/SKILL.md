@@ -4,6 +4,64 @@ description: Autonomous implementation loop with atomic task queue. Use when imp
 allowed-tools: [Bash, Read, Write, Edit, Grep, Glob, Task, TodoWrite]
 ---
 
+## MANDATORY: SUBAGENT EXECUTION
+
+**CRITICAL REQUIREMENT — DO NOT IGNORE**
+
+Ralph MUST execute each task via Task tool subagent. NEVER execute tasks directly in main context.
+
+### Required Pattern
+
+```
+For EACH task:
+1. Read task from task-queue.yaml
+2. Update status to "in_progress"
+3. SPAWN SUBAGENT via Task tool ← MANDATORY
+4. Wait for subagent result
+5. Update task status based on result
+6. Commit changes
+7. Move to next task
+```
+
+### Task Tool Call (REQUIRED)
+
+```typescript
+Task({
+  subagent_type: getAgentType(task.type),  // backend-agent, frontend-agent, etc.
+  description: `Execute ${task.id}`,
+  prompt: buildTaskPrompt(task)
+})
+```
+
+### Agent Type Mapping
+
+| Task Type | subagent_type |
+|-----------|---------------|
+| `api` | `api-agent` |
+| `backend` | `backend-agent` |
+| `frontend` | `frontend-agent` |
+| `test` | `test-agent` |
+| `devops` | `devops-agent` |
+
+### FORBIDDEN
+
+```
+❌ Reading task files and implementing directly
+❌ Running pnpm/npm commands for task implementation
+❌ Editing source files without spawning subagent
+❌ "Let me implement this task..." in main context
+```
+
+### CORRECT
+
+```
+✅ "Spawning backend-agent to execute TASK-001-A..."
+✅ Task({ subagent_type: "backend-agent", ... })
+✅ "Agent returned: done. Moving to next task."
+```
+
+---
+
 # Ralph Loop — Autonomous Task Queue Executor
 
 **R**elentless **A**utonomous **L**oop for **P**roduct **H**acking
