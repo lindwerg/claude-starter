@@ -11,6 +11,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { minimatch } from 'minimatch';
 import { PostToolUseInput, HookOutput, readStdin, output } from './types';
 
 // Task queue types
@@ -49,20 +50,28 @@ function parseYaml(filePath: string): TaskQueue | null {
   }
 }
 
-// Check if file exists (supports simple glob with *)
+// Check if file exists (supports full glob patterns with minimatch)
 function checkOutput(outputPattern: string, projectDir: string): { exists: boolean; files: string[] } {
   const fullPath = path.join(projectDir, outputPattern);
 
-  // Simple glob support for * patterns
-  if (outputPattern.includes('*')) {
+  // Glob support with minimatch (supports *, **, ?, [], etc.)
+  if (outputPattern.includes('*') || outputPattern.includes('?') || outputPattern.includes('[')) {
     try {
+      // For ** patterns, need to recursively search
+      if (outputPattern.includes('**')) {
+        const matchedFiles = findFilesRecursive(projectDir, outputPattern);
+        return { exists: matchedFiles.length > 0, files: matchedFiles };
+      }
+
+      // For simple * patterns in single directory
       const dir = path.dirname(fullPath);
       const pattern = path.basename(outputPattern);
-      const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
 
       if (fs.existsSync(dir)) {
-        const files = fs.readdirSync(dir).filter((f) => regex.test(f));
-        return { exists: files.length > 0, files: files.map((f) => path.join(dir, f)) };
+        const files = fs.readdirSync(dir)
+          .filter((f) => minimatch(f, pattern, { dot: true }))
+          .map((f) => path.join(dir, f));
+        return { exists: files.length > 0, files };
       }
     } catch {
       return { exists: false, files: [] };
@@ -72,6 +81,38 @@ function checkOutput(outputPattern: string, projectDir: string): { exists: boole
   // Direct file check
   const exists = fs.existsSync(fullPath);
   return { exists, files: exists ? [fullPath] : [] };
+}
+
+// Recursively find files matching glob pattern (for ** support)
+function findFilesRecursive(dir: string, pattern: string): string[] {
+  const results: string[] = [];
+
+  function walk(currentDir: string) {
+    try {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+        const relativePath = path.relative(dir, fullPath);
+
+        // Skip node_modules and .git
+        if (relativePath.includes('node_modules') || relativePath.includes('.git')) {
+          continue;
+        }
+
+        if (entry.isDirectory()) {
+          walk(fullPath);
+        } else if (minimatch(relativePath, pattern, { dot: true })) {
+          results.push(fullPath);
+        }
+      }
+    } catch {
+      // Ignore permission errors
+    }
+  }
+
+  walk(dir);
+  return results;
 }
 
 // Run quality gates
@@ -201,9 +242,9 @@ async function main(): Promise<void> {
     const normalizedPattern = pattern.replace(/^\.\//, '');
     const normalizedPath = relativePath.replace(/^\.\//, '');
 
-    if (pattern.includes('*')) {
-      const regex = new RegExp('^' + normalizedPattern.replace(/\*/g, '.*') + '$');
-      return regex.test(normalizedPath);
+    // Use minimatch for glob patterns (supports *, **, ?, etc.)
+    if (pattern.includes('*') || pattern.includes('?') || pattern.includes('[')) {
+      return minimatch(normalizedPath, normalizedPattern, { dot: true });
     }
 
     return normalizedPattern === normalizedPath || pattern === filePath;
