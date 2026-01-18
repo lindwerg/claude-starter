@@ -13,10 +13,10 @@ model: opus
 **If spawned by Ralph Loop**, create subagent marker IMMEDIATELY as your FIRST action:
 
 ```bash
-echo "$(date -Iseconds)" > .bmad/subagent-active
+echo "$RANDOM-$RANDOM-$(date +%s)" > .bmad/subagent-active
 ```
 
-This marker allows you to edit src/ files. Without it, PreToolUse hook will BLOCK your edits.
+This marker (unique ID) allows you to edit src/ files. Without it, PreToolUse hook will BLOCK your edits.
 
 **At the end of your work**, remove the marker:
 

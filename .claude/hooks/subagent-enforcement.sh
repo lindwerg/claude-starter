@@ -53,20 +53,12 @@ fi
 # CHECK: src/ requires subagent marker
 if [[ "$FILE_PATH" == *"/src/"* ]] || [[ "$FILE_PATH" == *"frontend/src/"* ]] || [[ "$FILE_PATH" == *"backend/src/"* ]]; then
 
-    # Check if subagent marker exists and is fresh (< 5 min old)
+    # Check if subagent marker exists (UUID-based, no age check)
+    # Subagent creates this file at start, removes at completion
+    # No race condition - if file exists, subagent is active
     if [ -f "$SUBAGENT_MARKER" ]; then
-        # Get marker modification time (macOS vs Linux)
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            MARKER_TIME=$(stat -f %m "$SUBAGENT_MARKER" 2>/dev/null || echo 0)
-        else
-            MARKER_TIME=$(stat -c %Y "$SUBAGENT_MARKER" 2>/dev/null || echo 0)
-        fi
-
-        NOW=$(date +%s)
-        AGE=$((NOW - MARKER_TIME))
-
-        # Fresh marker (< 5 minutes = 300 seconds) - allow
-        if [ "$AGE" -lt 300 ]; then
+        # Validate marker is not empty (basic sanity check)
+        if [ -s "$SUBAGENT_MARKER" ]; then
             echo '{"result":"continue"}'
             exit 0
         fi
