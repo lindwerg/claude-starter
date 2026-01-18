@@ -84,6 +84,39 @@ Before running Ralph Loop:
                      [STOP: Human needed]    [CONTINUE: Next task]
 ```
 
+## TDD Rules
+
+**For `test` type tasks:**
+- Write FAILING test first
+- Verify `pnpm test` shows failure
+- DO NOT implement — just test
+- This is RED phase of TDD
+
+**For `backend`/`frontend` type tasks:**
+- Run tests FIRST to confirm they fail
+- Implement code
+- Run tests — must ALL PASS
+- This is GREEN phase of TDD
+
+**Task order enforces TDD:**
+```yaml
+# Task queue ensures test → implementation order:
+- id: "TASK-001-A"
+  type: "test"
+  title: "Write FAILING auth test"
+  acceptance:
+    - "Create auth.integration.test.ts"
+    - "pnpm test shows 1 FAILING test"
+
+- id: "TASK-001-B"
+  type: "backend"
+  depends_on: ["TASK-001-A"]
+  title: "Implement auth service"
+  acceptance:
+    - "AuthService validates initData"
+    - "pnpm test shows ALL PASSING"  # GREEN!
+```
+
 ## Task Queue Workflow
 
 ### 1. Load Queue
@@ -178,6 +211,18 @@ After subagent completes:
    pnpm test:run --filter="{feature}"
    ```
 
+### 4.5. Quality Gates (MANDATORY)
+
+Before marking task as done, run ALL:
+
+1. **TypeScript**: `pnpm typecheck` — ZERO errors
+2. **Lint**: `pnpm lint` — ZERO warnings
+3. **Tests**: `pnpm test` — ALL PASS
+
+If ANY fails → task status = "retrying", fix issues first.
+
+**CRITICAL**: Empty output from `tsc --noEmit` = SUCCESS (no errors)
+
 ### 5. Update Queue
 
 **On success:**
@@ -199,6 +244,28 @@ tasks:
     error: "Zod schema validation failed"
 ```
 
+### 5.5. Record Task Receipt
+
+After task completion, IMMEDIATELY update task-queue.yaml with receipt:
+
+```yaml
+receipt:
+  work_summary: "<1-2 sentences what was done>"
+  files_created: [...]
+  files_modified: [...]
+  tests_passed: true|false
+  commit_hash: "<hash>"
+  notes: "<any learnings for future Ralph>"
+  duration_minutes: <number>
+```
+
+Also append to `.bmad/ralph-execution-log.jsonl`:
+```bash
+echo '{"task_id":"...","status":"done","work_summary":"...","tests_passed":true,"commit":"abc1234"}' >> .bmad/ralph-execution-log.jsonl
+```
+
+**This provides context for future Ralph iterations and enables debugging.**
+
 ### 6. Commit Changes
 
 After each successful task:
@@ -210,6 +277,16 @@ Commit message format:
 - `feat(auth): add user schema to Prisma`
 - `feat(auth): implement register controller`
 - `test(auth): add integration tests`
+
+### 6.5. Context Preservation
+
+Before moving to next task, ensure future Ralph has context:
+
+1. **Read execution log**: `cat .bmad/ralph-execution-log.jsonl | tail -5`
+2. **Check recent receipts**: Look at last 3 completed tasks in task-queue.yaml
+3. **Understand dependencies**: What files were created that this task needs
+
+**This prevents duplicate work and provides learning from past iterations.**
 
 ### 7. Auto-Transition
 

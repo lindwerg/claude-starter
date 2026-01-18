@@ -145,6 +145,12 @@ summary:
 
 current_task: null
 
+# Execution context for future Ralph iterations
+execution_context:
+  last_updated: null
+  tests_status: "unknown"  # passing | failing | unknown
+  recent_learnings: []
+
 tasks:
   - id: "TASK-001-A"
     story_id: "AUTH-001"
@@ -160,6 +166,7 @@ tasks:
       - "Unique constraint on telegramId"
     retries: 0
     max_retries: 3
+    receipt: null  # Filled by Ralph after completion
 
   - id: "TASK-001-B"
     story_id: "AUTH-001"
