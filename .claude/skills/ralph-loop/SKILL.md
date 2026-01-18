@@ -347,12 +347,14 @@ echo '{"task_id":"...","status":"done","work_summary":"...","tests_passed":true,
 
 **This provides context for future Ralph iterations and enables debugging.**
 
-### 6. Commit Changes
+### 6. Commit Changes (AUTO - NO CONFIRMATION)
 
-After each successful task:
+After each successful task, commit directly WITHOUT asking:
 ```bash
-/commit "feat({feature}): {task.title}"
+git add -A && git commit -m "feat({feature}): {task.title}"
 ```
+
+**DO NOT use /commit skill** — it asks for confirmation and breaks automation.
 
 Commit message format:
 - `feat(auth): add user schema to Prisma`
