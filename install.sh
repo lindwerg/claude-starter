@@ -1,65 +1,76 @@
 #!/bin/bash
 set -e
 
-# Provide Starter Kit Installer
-# Автономная разработка full-stack приложений с Claude Code
+# ═══════════════════════════════════════════════════════════════════════════
+# PROVIDE STARTER KIT - ПОЛНАЯ УСТАНОВКА
+# ═══════════════════════════════════════════════════════════════════════════
 #
-# Usage:
+# Одна команда делает ВСЁ:
+#   mkdir my-app && cd my-app
 #   curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
 #
-# Creates:
-#   1. ~/.claude/ — конфигурация Claude Code (skills, rules, hooks, agents)
-#   2. ./backend/, ./frontend/, etc. — структура проекта в текущей папке
+# Результат:
+#   1. ~/.claude/ — skills, rules, hooks, agents (глобально)
+#   2. Полный full-stack проект с работающими серверами
+#   3. PostgreSQL + Redis запущены в Docker
+#   4. Зависимости установлены, Prisma настроена
+#   5. Backend и Frontend проверены и работают
+#
+# ═══════════════════════════════════════════════════════════════════════════
 
 REPO_URL="https://github.com/lindwerg/claude-starter"
 CLAUDE_DIR="$HOME/.claude"
 BACKUP_DIR="$HOME/.claude-backup-$(date +%Y%m%d%H%M%S)"
 TEMP_DIR=""
 PROJECT_DIR="$(pwd)"
+PROJECT_NAME="$(basename "$PROJECT_DIR")"
 
-# Colors for output
+# Ports
+POSTGRES_PORT=5433
+REDIS_PORT=6380
+BACKEND_PORT=3001
+FRONTEND_PORT=5173
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-log_info() {
-  echo -e "${GREEN}[✓]${NC} $1"
-}
+log_info() { echo -e "${GREEN}[✓]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[!]${NC} $1"; }
+log_error() { echo -e "${RED}[✗]${NC} $1"; }
+log_step() { echo -e "${BLUE}[→]${NC} $1"; }
 
-log_warn() {
-  echo -e "${YELLOW}[!]${NC} $1"
-}
+# ═══════════════════════════════════════════════════════════════════════════
+# BANNER
+# ═══════════════════════════════════════════════════════════════════════════
 
-log_error() {
-  echo -e "${RED}[✗]${NC} $1"
-}
-
-log_step() {
-  echo -e "${BLUE}[→]${NC} $1"
-}
-
-# Print banner
 print_banner() {
   echo ""
-  echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
-  echo -e "${CYAN}║                                                           ║${NC}"
-  echo -e "${CYAN}║   ${BOLD}${GREEN}PROVIDE STARTER KIT${NC}${CYAN}                                    ║${NC}"
-  echo -e "${CYAN}║   ${NC}Автономная разработка full-stack приложений${CYAN}            ║${NC}"
-  echo -e "${CYAN}║                                                           ║${NC}"
-  echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+  echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${CYAN}║                                                               ║${NC}"
+  echo -e "${CYAN}║   ${BOLD}${GREEN}PROVIDE STARTER KIT${NC}${CYAN}                                        ║${NC}"
+  echo -e "${CYAN}║   ${NC}Автономная разработка full-stack приложений${CYAN}                ║${NC}"
+  echo -e "${CYAN}║                                                               ║${NC}"
+  echo -e "${CYAN}║   ${NC}Проект: ${GREEN}${PROJECT_NAME}${NC}${CYAN}                                          ${NC}"
+  echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
   echo ""
 }
 
-# 1. Check prerequisites
+# ═══════════════════════════════════════════════════════════════════════════
+# 1. PREREQUISITES
+# ═══════════════════════════════════════════════════════════════════════════
+
 check_prerequisites() {
   log_step "Проверяю зависимости..."
 
   local missing=0
 
+  # Node.js
   if ! command -v node &> /dev/null; then
     log_error "Node.js не найден"
     echo "    → Установи: https://nodejs.org/ (версия 18+)"
@@ -67,44 +78,50 @@ check_prerequisites() {
   else
     local node_version=$(node --version | sed 's/v//' | cut -d. -f1)
     if [ "$node_version" -lt 18 ]; then
-      log_error "Node.js версия < 18 (текущая: $(node --version))"
-      echo "    → Обнови до версии 18+"
+      log_error "Node.js версия < 18"
       missing=1
     else
       log_info "Node.js $(node --version)"
     fi
   fi
 
+  # Git
   if ! command -v git &> /dev/null; then
     log_error "Git не найден"
-    echo "    → Установи: https://git-scm.com/"
     missing=1
   else
     log_info "Git $(git --version | cut -d' ' -f3)"
   fi
 
+  # pnpm
   if ! command -v pnpm &> /dev/null; then
     log_warn "pnpm не найден — устанавливаю..."
-    npm install -g pnpm 2>/dev/null || {
-      log_error "Не удалось установить pnpm"
-      echo "    → Установи вручную: npm install -g pnpm"
-      missing=1
-    }
-    if command -v pnpm &> /dev/null; then
-      log_info "pnpm установлен"
-    fi
+    npm install -g pnpm 2>/dev/null || { log_error "Не удалось установить pnpm"; missing=1; }
+    command -v pnpm &> /dev/null && log_info "pnpm установлен"
   else
     log_info "pnpm $(pnpm --version)"
   fi
 
-  if ! command -v jq &> /dev/null; then
-    log_warn "jq не найден — settings будут заменены, не объединены"
-    echo "    → Рекомендуется: brew install jq (macOS) или apt install jq (Linux)"
+  # Docker
+  if ! command -v docker &> /dev/null; then
+    log_warn "Docker не найден — БД нужно будет поднять вручную"
+  else
+    if docker info &>/dev/null; then
+      log_info "Docker $(docker --version | cut -d' ' -f3 | tr -d ',')"
+    else
+      log_warn "Docker не запущен — запусти Docker Desktop"
+    fi
   fi
 
+  # jq
+  if ! command -v jq &> /dev/null; then
+    log_warn "jq не найден — settings будут заменены"
+  fi
+
+  # Claude Code
   if ! command -v claude &> /dev/null; then
     log_warn "Claude Code не найден"
-    echo "    → Установи после: npm install -g @anthropic-ai/claude-code"
+    echo "    → Установи: npm install -g @anthropic-ai/claude-code"
   else
     log_info "Claude Code найден"
   fi
@@ -116,19 +133,18 @@ check_prerequisites() {
   fi
 }
 
-# 2. Backup existing config
+# ═══════════════════════════════════════════════════════════════════════════
+# 2. BACKUP & CLONE
+# ═══════════════════════════════════════════════════════════════════════════
+
 backup_existing() {
   if [ -d "$CLAUDE_DIR" ]; then
-    log_step "Сохраняю backup ~/.claude → $BACKUP_DIR"
+    log_step "Сохраняю backup ~/.claude..."
     cp -r "$CLAUDE_DIR" "$BACKUP_DIR"
-    echo "$BACKUP_DIR" > "$HOME/.claude-starter-last-backup"
-    log_info "Backup создан"
-  else
-    log_info "Чистая установка (нет существующего ~/.claude)"
+    log_info "Backup создан: $BACKUP_DIR"
   fi
 }
 
-# 3. Clone repo with submodules
 clone_repo() {
   log_step "Скачиваю Provide Starter Kit..."
   TEMP_DIR=$(mktemp -d)
@@ -136,136 +152,618 @@ clone_repo() {
   if git clone --depth 1 --recurse-submodules "$REPO_URL" "$TEMP_DIR/claude-starter" 2>/dev/null; then
     log_info "Репозиторий загружен"
   else
-    log_error "Не удалось скачать репозиторий: $REPO_URL"
+    log_error "Не удалось скачать репозиторий"
     exit 1
   fi
 }
 
-# 4. Install Claude Code config (skills, rules, hooks, agents)
-install_claude_config() {
-  log_step "Устанавливаю конфигурацию Claude Code..."
+# ═══════════════════════════════════════════════════════════════════════════
+# 3. INSTALL CLAUDE CONFIG (GLOBAL)
+# ═══════════════════════════════════════════════════════════════════════════
 
-  # Create directories
+install_claude_config() {
+  log_step "Устанавливаю конфигурацию Claude Code (~/.claude)..."
+
   mkdir -p "$CLAUDE_DIR"/{skills,rules,hooks,commands,agents,templates,scripts,orchestrator}
 
-  # Copy components
-  local components=("skills" "rules" "hooks" "commands" "agents" "orchestrator")
-
+  local components=("skills" "rules" "hooks" "commands" "agents" "orchestrator" "scripts")
   for component in "${components[@]}"; do
-    local src_dir="$TEMP_DIR/claude-starter/.claude/$component"
-    local dst_dir="$CLAUDE_DIR/$component"
-
-    if [ -d "$src_dir" ] && [ "$(ls -A "$src_dir" 2>/dev/null)" ]; then
-      cp -r "$src_dir/"* "$dst_dir/" 2>/dev/null || true
+    local src="$TEMP_DIR/claude-starter/.claude/$component"
+    local dst="$CLAUDE_DIR/$component"
+    if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
+      cp -r "$src/"* "$dst/" 2>/dev/null || true
     fi
   done
 
-  # Make hook scripts executable
+  # Make scripts executable
   chmod +x "$CLAUDE_DIR/hooks/"*.sh 2>/dev/null || true
+  chmod +x "$CLAUDE_DIR/scripts/"*.sh 2>/dev/null || true
   chmod +x "$CLAUDE_DIR/orchestrator/ralph" 2>/dev/null || true
-  chmod +x "$CLAUDE_DIR/orchestrator/lib/"*.sh 2>/dev/null || true
+
+  # Templates
+  if [ -d "$TEMP_DIR/claude-starter/templates" ]; then
+    cp -r "$TEMP_DIR/claude-starter/templates/"* "$CLAUDE_DIR/templates/" 2>/dev/null || true
+  fi
+
+  # Settings.json
+  local src_settings="$TEMP_DIR/claude-starter/.claude/settings.json"
+  local dst_settings="$CLAUDE_DIR/settings.json"
+  if [ -f "$src_settings" ]; then
+    if command -v jq &> /dev/null && [ -f "$dst_settings" ]; then
+      jq -s 'reduce .[] as $item ({}; . * $item)' "$src_settings" "$dst_settings" > "$CLAUDE_DIR/settings.merged.json"
+      mv "$CLAUDE_DIR/settings.merged.json" "$dst_settings"
+    else
+      cp "$src_settings" "$dst_settings"
+    fi
+  fi
+
+  # MCP config
+  local src_mcp="$TEMP_DIR/claude-starter/.claude/mcp_config.json"
+  local dst_mcp="$CLAUDE_DIR/mcp_config.json"
+  if [ -f "$src_mcp" ]; then
+    if command -v jq &> /dev/null && [ -f "$dst_mcp" ]; then
+      jq -s '.[0].mcpServers as $src | .[1].mcpServers as $dst | {mcpServers: ($src + $dst)}' "$src_mcp" "$dst_mcp" > "$CLAUDE_DIR/mcp.merged.json"
+      mv "$CLAUDE_DIR/mcp.merged.json" "$dst_mcp"
+    else
+      cp "$src_mcp" "$dst_mcp"
+    fi
+  fi
+
+  # CLAUDE.md
+  if [ -f "$TEMP_DIR/claude-starter/CLAUDE.md" ] && [ ! -f "$CLAUDE_DIR/CLAUDE.md" ]; then
+    cp "$TEMP_DIR/claude-starter/CLAUDE.md" "$CLAUDE_DIR/"
+  fi
 
   log_info "Skills, rules, hooks, agents установлены"
 }
 
-# 5. Merge settings.json
-merge_settings() {
-  local src_settings="$TEMP_DIR/claude-starter/.claude/settings.json"
-  local dst_settings="$CLAUDE_DIR/settings.json"
-
-  if [ ! -f "$src_settings" ]; then
-    return
-  fi
-
-  if command -v jq &> /dev/null && [ -f "$dst_settings" ]; then
-    log_step "Объединяю settings.json..."
-    jq -s 'reduce .[] as $item ({}; . * $item)' \
-      "$src_settings" "$dst_settings" > "$CLAUDE_DIR/settings.merged.json"
-    mv "$CLAUDE_DIR/settings.merged.json" "$dst_settings"
-    log_info "Settings объединены"
-  else
-    cp "$src_settings" "$dst_settings"
-    log_info "Settings установлен"
-  fi
-}
-
-# 6. Merge mcp_config.json
-merge_mcp() {
-  local src_mcp="$TEMP_DIR/claude-starter/.claude/mcp_config.json"
-  local dst_mcp="$CLAUDE_DIR/mcp_config.json"
-
-  if [ ! -f "$src_mcp" ]; then
-    return
-  fi
-
-  if command -v jq &> /dev/null && [ -f "$dst_mcp" ]; then
-    log_step "Объединяю mcp_config.json..."
-    jq -s '.[0].mcpServers as $src | .[1].mcpServers as $dst | {mcpServers: ($src + $dst)}' \
-      "$src_mcp" "$dst_mcp" > "$CLAUDE_DIR/mcp_config.merged.json"
-    mv "$CLAUDE_DIR/mcp_config.merged.json" "$dst_mcp"
-    log_info "MCP config объединён"
-  else
-    cp "$src_mcp" "$dst_mcp"
-    log_info "MCP config установлен"
-  fi
-}
-
-# 7. Install templates
-install_templates() {
-  local src_templates="$TEMP_DIR/claude-starter/templates"
-
-  if [ -d "$src_templates" ]; then
-    cp -r "$src_templates/"* "$CLAUDE_DIR/templates/" 2>/dev/null || true
-    log_info "Шаблоны установлены"
-  fi
-}
-
-# 8. Install TDD Guard
-install_tdd_guard() {
-  if ! command -v tdd-guard &> /dev/null; then
-    log_step "Устанавливаю TDD Guard..."
-    npm install -g tdd-guard 2>/dev/null && log_info "TDD Guard установлен" || log_warn "Не удалось установить tdd-guard"
-  fi
-}
-
-# ═══════════════════════════════════════════════════════════════════
-# 9. CREATE PROJECT STRUCTURE — Главная новая функция!
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
+# 4. CREATE PROJECT STRUCTURE (MONOREPO)
+# ═══════════════════════════════════════════════════════════════════════════
 
 create_project_structure() {
   log_step "Создаю структуру full-stack проекта..."
 
-  local templates="$CLAUDE_DIR/templates"
-
-  # ─────────────────────────────────────────────────────────────────
-  # Backend (VSA — Vertical Slice Architecture)
-  # ─────────────────────────────────────────────────────────────────
-  mkdir -p "$PROJECT_DIR/backend/src/features"
+  # Backend (VSA)
+  mkdir -p "$PROJECT_DIR/backend/src/features/health"
   mkdir -p "$PROJECT_DIR/backend/src/shared/middleware"
   mkdir -p "$PROJECT_DIR/backend/src/shared/utils"
-  mkdir -p "$PROJECT_DIR/backend/src/shared/types"
   mkdir -p "$PROJECT_DIR/backend/src/shared/config"
+  mkdir -p "$PROJECT_DIR/backend/src/shared/types"
   mkdir -p "$PROJECT_DIR/backend/prisma"
 
-  # Backend placeholder files
-  cat > "$PROJECT_DIR/backend/src/index.ts" << 'BACKEND_INDEX'
-import express from 'express';
+  # Frontend (FSD)
+  mkdir -p "$PROJECT_DIR/frontend/src/app/providers"
+  mkdir -p "$PROJECT_DIR/frontend/src/app/styles"
+  mkdir -p "$PROJECT_DIR/frontend/src/pages/home/ui"
+  mkdir -p "$PROJECT_DIR/frontend/src/widgets"
+  mkdir -p "$PROJECT_DIR/frontend/src/features"
+  mkdir -p "$PROJECT_DIR/frontend/src/entities"
+  mkdir -p "$PROJECT_DIR/frontend/src/shared/ui"
+  mkdir -p "$PROJECT_DIR/frontend/src/shared/lib"
+  mkdir -p "$PROJECT_DIR/frontend/src/shared/hooks"
+  mkdir -p "$PROJECT_DIR/frontend/src/shared/api"
+  mkdir -p "$PROJECT_DIR/frontend/src/shared/types"
+  mkdir -p "$PROJECT_DIR/frontend/public"
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+  # Other
+  mkdir -p "$PROJECT_DIR/docs"
+  mkdir -p "$PROJECT_DIR/.bmad"
+  mkdir -p "$PROJECT_DIR/.claude/hooks"
 
+  log_info "Структура каталогов создана"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 5. CREATE CONFIG FILES
+# ═══════════════════════════════════════════════════════════════════════════
+
+create_config_files() {
+  log_step "Создаю конфигурационные файлы..."
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Root package.json (Monorepo)
+  # ─────────────────────────────────────────────────────────────────────────
+  cat > "$PROJECT_DIR/package.json" << EOF
+{
+  "name": "${PROJECT_NAME}",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter backend dev\" \"pnpm --filter frontend dev\"",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter backend db:generate",
+    "db:push": "pnpm --filter backend db:push",
+    "db:migrate": "pnpm --filter backend db:migrate",
+    "db:studio": "pnpm --filter backend db:studio",
+    "generate-api-types": "openapi-typescript backend/src/openapi.yaml -o frontend/src/shared/api/types.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "openapi-typescript": "^7.5.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+EOF
+
+  # pnpm-workspace.yaml
+  cat > "$PROJECT_DIR/pnpm-workspace.yaml" << 'EOF'
+packages:
+  - 'backend'
+  - 'frontend'
+EOF
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Backend package.json
+  # ─────────────────────────────────────────────────────────────────────────
+  cat > "$PROJECT_DIR/backend/package.json" << EOF
+{
+  "name": "${PROJECT_NAME}-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1",
+    "cors": "^2.8.5",
+    "express": "^4.22.1",
+    "helmet": "^8.0.0",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.7",
+    "prisma": "^6.2.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.17"
+  }
+}
+EOF
+
+  # Backend tsconfig.json
+  cat > "$PROJECT_DIR/backend/tsconfig.json" << 'EOF'
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+EOF
+
+  # Backend vitest.config.ts
+  cat > "$PROJECT_DIR/backend/vitest.config.ts" << 'EOF'
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['**/*.test.ts', '**/*.spec.ts'],
+  },
+});
+EOF
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Frontend package.json
+  # ─────────────────────────────────────────────────────────────────────────
+  cat > "$PROJECT_DIR/frontend/package.json" << EOF
+{
+  "name": "${PROJECT_NAME}-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.64.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7"
+  }
+}
+EOF
+
+  # Frontend tsconfig.json
+  cat > "$PROJECT_DIR/frontend/tsconfig.json" << 'EOF'
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+EOF
+
+  cat > "$PROJECT_DIR/frontend/tsconfig.node.json" << 'EOF'
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true
+  },
+  "include": ["vite.config.ts"]
+}
+EOF
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Docker Compose
+  # ─────────────────────────────────────────────────────────────────────────
+  cat > "$PROJECT_DIR/docker-compose.yml" << EOF
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${PROJECT_NAME}-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${PROJECT_NAME}
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME}-redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:
+EOF
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # .mcp.json
+  # ─────────────────────────────────────────────────────────────────────────
+  cat > "$PROJECT_DIR/.mcp.json" << 'EOF'
+{
+  "mcpServers": {
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--caps=testing"]
+    }
+  }
+}
+EOF
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # .gitignore
+  # ─────────────────────────────────────────────────────────────────────────
+  cat > "$PROJECT_DIR/.gitignore" << 'EOF'
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Testing
+coverage/
+
+# BMAD state
+.bmad/ralph-in-progress
+.bmad/subagent-active
+.bmad/sprint-validation-pending
+EOF
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Environment files
+  # ─────────────────────────────────────────────────────────────────────────
+  cat > "$PROJECT_DIR/backend/.env" << EOF
+NODE_ENV=development
+PORT=${BACKEND_PORT}
+DATABASE_URL=postgresql://postgres:postgres@localhost:${POSTGRES_PORT}/${PROJECT_NAME}
+CORS_ORIGIN=http://localhost:${FRONTEND_PORT}
+EOF
+
+  cp "$PROJECT_DIR/backend/.env" "$PROJECT_DIR/backend/.env.example"
+
+  cat > "$PROJECT_DIR/frontend/.env" << EOF
+VITE_API_URL=http://localhost:${BACKEND_PORT}
+EOF
+
+  cp "$PROJECT_DIR/frontend/.env" "$PROJECT_DIR/frontend/.env.example"
+
+  log_info "Конфигурационные файлы созданы"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 6. CREATE BACKEND FILES
+# ═══════════════════════════════════════════════════════════════════════════
+
+create_backend_files() {
+  log_step "Создаю backend файлы..."
+
+  # app.ts
+  cat > "$PROJECT_DIR/backend/src/app.ts" << 'EOF'
+import express, { type Express } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import { env } from './shared/config/env.js';
+import { logger } from './shared/utils/logger.js';
+import { errorHandler } from './shared/middleware/error-handler.js';
+import { healthRouter } from './features/health/index.js';
+
+const app: Express = express();
+
+// Security middleware
+app.use(helmet());
+app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+
+// Body parsing
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Routes
+app.use('/api/health', healthRouter);
+
+// Error handling
+app.use(errorHandler);
+
+// Start server
+app.listen(env.PORT, () => {
+  logger.info(`Server running on http://localhost:${env.PORT}`);
+  logger.info(`Environment: ${env.NODE_ENV}`);
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running on http://localhost:${PORT}`);
-});
-BACKEND_INDEX
+export { app };
+EOF
 
-  cat > "$PROJECT_DIR/backend/prisma/schema.prisma" << 'PRISMA_SCHEMA'
+  # env.ts
+  cat > "$PROJECT_DIR/backend/src/shared/config/env.ts" << EOF
+import { z } from 'zod';
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PORT: z.coerce.number().default(${BACKEND_PORT}),
+  DATABASE_URL: z.string().default('postgresql://postgres:postgres@localhost:${POSTGRES_PORT}/${PROJECT_NAME}'),
+  CORS_ORIGIN: z.string().default('http://localhost:${FRONTEND_PORT}'),
+});
+
+export const env = envSchema.parse(process.env);
+EOF
+
+  # logger.ts
+  cat > "$PROJECT_DIR/backend/src/shared/utils/logger.ts" << 'EOF'
+import pino from 'pino';
+import { env } from '../config/env.js';
+
+export const logger = pino({
+  level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+  ...(env.NODE_ENV === 'development' && {
+    transport: {
+      target: 'pino-pretty',
+      options: { colorize: true, translateTime: 'SYS:standard' },
+    },
+  }),
+});
+EOF
+
+  # error-handler.ts
+  cat > "$PROJECT_DIR/backend/src/shared/middleware/error-handler.ts" << 'EOF'
+import type { ErrorRequestHandler } from 'express';
+import { logger } from '../utils/logger.js';
+
+export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  logger.error(err);
+  const status = err.status ?? 500;
+  const message = err.message ?? 'Internal Server Error';
+  res.status(status).json({ error: { message, status } });
+};
+EOF
+
+  # validate.ts
+  cat > "$PROJECT_DIR/backend/src/shared/middleware/validate.ts" << 'EOF'
+import type { Request, Response, NextFunction } from 'express';
+import { type ZodSchema, ZodError } from 'zod';
+
+export const validate = (schema: ZodSchema) => (req: Request, res: Response, next: NextFunction): void => {
+  try {
+    schema.parse({ body: req.body, query: req.query, params: req.params });
+    next();
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ error: { message: 'Validation error', details: error.errors } });
+      return;
+    }
+    next(error);
+  }
+};
+EOF
+
+  # Health feature
+  cat > "$PROJECT_DIR/backend/src/features/health/health.service.ts" << 'EOF'
+import { env } from '../../shared/config/env.js';
+
+interface HealthStatus {
+  status: 'ok' | 'error';
+  timestamp: string;
+  uptime: number;
+  environment: string;
+}
+
+export function getHealthStatus(): HealthStatus {
+  return {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: env.NODE_ENV,
+  };
+}
+EOF
+
+  cat > "$PROJECT_DIR/backend/src/features/health/health.controller.ts" << 'EOF'
+import { Router } from 'express';
+import { getHealthStatus } from './health.service.js';
+
+const router = Router();
+
+router.get('/', (_req, res) => {
+  res.json(getHealthStatus());
+});
+
+export { router as healthRouter };
+EOF
+
+  cat > "$PROJECT_DIR/backend/src/features/health/index.ts" << 'EOF'
+export { healthRouter } from './health.controller.js';
+export { getHealthStatus } from './health.service.js';
+EOF
+
+  # OpenAPI spec
+  cat > "$PROJECT_DIR/backend/src/openapi.yaml" << EOF
+openapi: 3.1.0
+info:
+  title: ${PROJECT_NAME} API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:${BACKEND_PORT}
+
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                \$ref: '#/components/schemas/HealthStatus'
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, timestamp, uptime, environment]
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        timestamp:
+          type: string
+          format: date-time
+        uptime:
+          type: number
+        environment:
+          type: string
+EOF
+
+  # Prisma schema
+  cat > "$PROJECT_DIR/backend/prisma/schema.prisma" << EOF
 generator client {
   provider = "prisma-client-js"
 }
@@ -281,317 +779,234 @@ datasource db {
 //   email     String   @unique
 //   createdAt DateTime @default(now())
 // }
-PRISMA_SCHEMA
+EOF
 
-  cat > "$PROJECT_DIR/backend/src/openapi.yaml" << 'OPENAPI_SPEC'
-openapi: 3.1.0
-info:
-  title: API
-  version: 1.0.0
-  description: Generated by Provide Starter Kit
-
-servers:
-  - url: http://localhost:3001
-    description: Development server
-
-paths:
-  /health:
-    get:
-      operationId: healthCheck
-      summary: Health check endpoint
-      responses:
-        '200':
-          description: Service is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  timestamp:
-                    type: string
-
-components:
-  schemas: {}
-  securitySchemes: {}
-OPENAPI_SPEC
-
-  log_info "Backend (VSA) создан"
-
-  # ─────────────────────────────────────────────────────────────────
-  # Frontend (FSD — Feature-Sliced Design)
-  # ─────────────────────────────────────────────────────────────────
-  mkdir -p "$PROJECT_DIR/frontend/src/app"
-  mkdir -p "$PROJECT_DIR/frontend/src/pages"
-  mkdir -p "$PROJECT_DIR/frontend/src/widgets"
-  mkdir -p "$PROJECT_DIR/frontend/src/features"
-  mkdir -p "$PROJECT_DIR/frontend/src/entities"
-  mkdir -p "$PROJECT_DIR/frontend/src/shared/ui"
-  mkdir -p "$PROJECT_DIR/frontend/src/shared/lib"
-  mkdir -p "$PROJECT_DIR/frontend/src/shared/hooks"
-  mkdir -p "$PROJECT_DIR/frontend/src/shared/api"
-  mkdir -p "$PROJECT_DIR/frontend/src/shared/types"
-  mkdir -p "$PROJECT_DIR/frontend/e2e"
-
-  # Frontend placeholder files
-  cat > "$PROJECT_DIR/frontend/src/app/App.tsx" << 'APP_TSX'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-const queryClient = new QueryClient();
-
-export function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-gray-50">
-        <main className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome to Your App
-          </h1>
-          <p className="mt-4 text-gray-600">
-            Built with Provide Starter Kit
-          </p>
-        </main>
-      </div>
-    </QueryClientProvider>
-  );
+  log_info "Backend файлы созданы"
 }
-APP_TSX
 
-  cat > "$PROJECT_DIR/frontend/src/main.tsx" << 'MAIN_TSX'
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { App } from './app/App';
-import './index.css';
+# ═══════════════════════════════════════════════════════════════════════════
+# 7. CREATE FRONTEND FILES
+# ═══════════════════════════════════════════════════════════════════════════
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
-MAIN_TSX
+create_frontend_files() {
+  log_step "Создаю frontend файлы..."
 
-  cat > "$PROJECT_DIR/frontend/src/index.css" << 'INDEX_CSS'
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-INDEX_CSS
+  # vite.config.ts
+  cat > "$PROJECT_DIR/frontend/vite.config.ts" << 'EOF'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
-  cat > "$PROJECT_DIR/frontend/index.html" << 'INDEX_HTML'
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 5173,
+  },
+});
+EOF
+
+  # vite-env.d.ts
+  cat > "$PROJECT_DIR/frontend/src/vite-env.d.ts" << 'EOF'
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+EOF
+
+  # index.html
+  cat > "$PROJECT_DIR/frontend/index.html" << EOF
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>App</title>
+    <title>${PROJECT_NAME}</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/app/index.tsx"></script>
   </body>
 </html>
-INDEX_HTML
+EOF
 
-  log_info "Frontend (FSD) создан"
+  # App entry
+  cat > "$PROJECT_DIR/frontend/src/app/index.tsx" << 'EOF'
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { QueryClientProvider } from './providers/query-provider';
+import { HomePage } from '../pages/home';
+import './styles/index.css';
 
-  # ─────────────────────────────────────────────────────────────────
-  # Docs & BMAD
-  # ─────────────────────────────────────────────────────────────────
-  mkdir -p "$PROJECT_DIR/docs"
-  mkdir -p "$PROJECT_DIR/.bmad"
-  mkdir -p "$PROJECT_DIR/.claude"
+const container = document.getElementById('root');
+if (!container) throw new Error('Root element not found');
 
-  # Copy doc templates if available
-  if [ -f "$templates/docs/PRD.md" ]; then
-    cp "$templates/docs/PRD.md" "$PROJECT_DIR/docs/"
-  fi
-  if [ -f "$templates/docs/ARCHITECTURE.md" ]; then
-    cp "$templates/docs/ARCHITECTURE.md" "$PROJECT_DIR/docs/"
-  fi
-  if [ -f "$templates/docs/API_SPEC.yaml" ]; then
-    cp "$templates/docs/API_SPEC.yaml" "$PROJECT_DIR/docs/"
-  fi
+createRoot(container).render(
+  <React.StrictMode>
+    <QueryClientProvider>
+      <HomePage />
+    </QueryClientProvider>
+  </React.StrictMode>
+);
+EOF
 
-  log_info "Docs создан"
+  # Query provider
+  cat > "$PROJECT_DIR/frontend/src/app/providers/query-provider.tsx" << 'EOF'
+import { QueryClient, QueryClientProvider as TanStackQueryProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 
-  # ─────────────────────────────────────────────────────────────────
-  # Root config files
-  # ─────────────────────────────────────────────────────────────────
-
-  # Copy templates if available
-  if [ -f "$templates/project/docker-compose.yml" ]; then
-    cp "$templates/project/docker-compose.yml" "$PROJECT_DIR/"
-  fi
-  if [ -f "$templates/project/vitest.config.ts" ]; then
-    cp "$templates/project/vitest.config.ts" "$PROJECT_DIR/"
-  fi
-  if [ -f "$templates/project/playwright.config.ts" ]; then
-    cp "$templates/project/playwright.config.ts" "$PROJECT_DIR/"
-  fi
-  if [ -f "$templates/project/.mcp.json" ]; then
-    cp "$templates/project/.mcp.json" "$PROJECT_DIR/"
-  fi
-
-  # tsconfig.json
-  cat > "$PROJECT_DIR/tsconfig.json" << 'TSCONFIG'
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "noUncheckedIndexedAccess": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./frontend/src/*"],
-      "@backend/*": ["./backend/src/*"]
-    }
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 1000 * 60, retry: 1 },
   },
-  "include": ["frontend/src", "backend/src"],
-  "exclude": ["node_modules", "dist"]
+});
+
+export function QueryClientProvider({ children }: { children: ReactNode }): JSX.Element {
+  return <TanStackQueryProvider client={queryClient}>{children}</TanStackQueryProvider>;
 }
-TSCONFIG
+EOF
 
-  # package.json
-  cat > "$PROJECT_DIR/package.json" << 'PACKAGE_JSON'
-{
-  "name": "my-app",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "concurrently \"pnpm dev:backend\" \"pnpm dev:frontend\"",
-    "dev:backend": "cd backend && tsx watch src/index.ts",
-    "dev:frontend": "cd frontend && vite",
-    "build": "pnpm build:backend && pnpm build:frontend",
-    "build:backend": "cd backend && tsc",
-    "build:frontend": "cd frontend && vite build",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.tsx",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "db:generate": "cd backend && prisma generate",
-    "db:migrate": "cd backend && prisma migrate dev",
-    "db:push": "cd backend && prisma db push",
-    "db:studio": "cd backend && prisma studio",
-    "generate-api-types": "openapi-typescript backend/src/openapi.yaml -o frontend/src/shared/api/types.ts"
-  },
-  "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "@tanstack/react-query": "^5.59.0",
-    "express": "^4.21.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zod": "^3.23.8",
-    "zustand": "^5.0.0"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.48.0",
-    "@testing-library/react": "^16.0.1",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.7.5",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.1",
-    "@typescript-eslint/eslint-plugin": "^8.8.1",
-    "@typescript-eslint/parser": "^8.8.1",
-    "@vitejs/plugin-react": "^4.3.2",
-    "autoprefixer": "^10.4.20",
-    "concurrently": "^9.0.1",
-    "eslint": "^9.12.0",
-    "openapi-typescript": "^7.4.1",
-    "postcss": "^8.4.47",
-    "prisma": "^5.22.0",
-    "tailwindcss": "^3.4.13",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.8",
-    "vitest": "^2.1.2"
-  },
-  "engines": {
-    "node": ">=18"
+  cat > "$PROJECT_DIR/frontend/src/app/providers/index.tsx" << 'EOF'
+export { QueryClientProvider } from './query-provider';
+EOF
+
+  # Styles
+  cat > "$PROJECT_DIR/frontend/src/app/styles/index.css" << 'EOF'
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+EOF
+
+  # HomePage
+  cat > "$PROJECT_DIR/frontend/src/pages/home/ui/HomePage.tsx" << 'EOF'
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/shared/api';
+
+export function HomePage(): JSX.Element {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => apiClient.get('/api/health'),
+  });
+
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">Welcome!</h1>
+        <p className="text-gray-500 mb-6">Built with Provide Starter Kit</p>
+        {isLoading && <p className="text-gray-500">Loading...</p>}
+        {error && <p className="text-red-500">Error connecting to backend</p>}
+        {data && (
+          <div className="bg-green-100 p-4 rounded-lg">
+            <p className="text-green-800 font-semibold">Backend is healthy!</p>
+            <p className="text-sm text-green-600">Uptime: {Math.floor(data.uptime)}s</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+EOF
+
+  cat > "$PROJECT_DIR/frontend/src/pages/home/index.ts" << 'EOF'
+export { HomePage } from './ui/HomePage';
+EOF
+
+  # API client
+  cat > "$PROJECT_DIR/frontend/src/shared/api/client.ts" << EOF
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:${BACKEND_PORT}';
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(\`\${API_URL}\${endpoint}\`, {
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  });
+
+  if (!response.ok) {
+    throw new Error(\`HTTP error! status: \${response.status}\`);
   }
+
+  return response.json() as Promise<T>;
 }
-PACKAGE_JSON
 
-  # .gitignore
-  cat > "$PROJECT_DIR/.gitignore" << 'GITIGNORE'
-# Dependencies
-node_modules/
-.pnpm-store/
+export const apiClient = {
+  get: <T>(endpoint: string) => request<T>(endpoint),
+  post: <T>(endpoint: string, body: unknown) => request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) }),
+  put: <T>(endpoint: string, body: unknown) => request<T>(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+};
+EOF
 
-# Build
-dist/
-build/
-.cache/
+  cat > "$PROJECT_DIR/frontend/src/shared/api/index.ts" << 'EOF'
+export { apiClient } from './client';
+EOF
 
-# Environment
-.env
-.env.local
-.env.*.local
+  # Barrel exports
+  for dir in ui lib hooks types; do
+    echo "// Export shared ${dir} here" > "$PROJECT_DIR/frontend/src/shared/$dir/index.ts"
+  done
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
+  # Tailwind config
+  cat > "$PROJECT_DIR/frontend/tailwind.config.js" << 'EOF'
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: { extend: {} },
+  plugins: [],
+};
+EOF
 
-# OS
-.DS_Store
-Thumbs.db
+  cat > "$PROJECT_DIR/frontend/postcss.config.js" << 'EOF'
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+EOF
 
-# Testing
-coverage/
-playwright-report/
-test-results/
+  log_info "Frontend файлы созданы"
+}
 
-# Prisma
-backend/prisma/*.db
-backend/prisma/*.db-journal
+# ═══════════════════════════════════════════════════════════════════════════
+# 8. CREATE PROJECT CLAUDE.MD & COPY HOOKS
+# ═══════════════════════════════════════════════════════════════════════════
 
-# Logs
-*.log
-npm-debug.log*
+setup_project_claude() {
+  log_step "Настраиваю .claude/ для проекта..."
 
-# BMAD
-.bmad/ralph-in-progress
-.bmad/subagent-active
-.bmad/sprint-validation-pending
-GITIGNORE
+  # Copy hooks to project
+  if [ -d "$CLAUDE_DIR/hooks" ]; then
+    cp -r "$CLAUDE_DIR/hooks/"* "$PROJECT_DIR/.claude/hooks/" 2>/dev/null || true
+    chmod +x "$PROJECT_DIR/.claude/hooks/"*.sh 2>/dev/null || true
+  fi
 
-  # .env.example
-  cat > "$PROJECT_DIR/.env.example" << 'ENV_EXAMPLE'
-# Database
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/myapp?schema=public"
+  # Copy settings.json
+  if [ -f "$CLAUDE_DIR/settings.json" ]; then
+    cp "$CLAUDE_DIR/settings.json" "$PROJECT_DIR/.claude/"
+  fi
 
-# Backend
-PORT=3001
-NODE_ENV=development
-
-# Frontend (Vite)
-VITE_API_URL=http://localhost:3001
-ENV_EXAMPLE
-
-  # CLAUDE.md for project
-  cat > "$PROJECT_DIR/CLAUDE.md" << 'PROJECT_CLAUDE_MD'
+  # Project CLAUDE.md
+  cat > "$PROJECT_DIR/CLAUDE.md" << 'EOF'
 # Project Instructions
 
 > Inherits from `~/.claude/CLAUDE.md` (FSD + VSA standards)
 
 ## Communication
 
-Always respond in **Russian**. Be direct, explain the "why", focus on architecture.
+Always respond in **Russian**. Be direct, focus on architecture.
 
 ## Project Structure
 
@@ -603,10 +1018,11 @@ Always respond in **Russian**. Be direct, explain the "why", focus on architectu
 ## Quick Commands
 
 ```bash
-pnpm dev          # Start both backend and frontend
-pnpm typecheck    # TypeScript check
-pnpm test         # Run tests
-pnpm db:migrate   # Run Prisma migrations
+pnpm dev           # Start backend + frontend
+pnpm typecheck     # TypeScript check
+pnpm test          # Run tests
+pnpm db:migrate    # Prisma migrations
+pnpm db:studio     # Prisma Studio GUI
 ```
 
 ## Workflow
@@ -615,88 +1031,130 @@ pnpm db:migrate   # Run Prisma migrations
 2. `/architecture` — Tech design
 3. `/validate-sprint` — Generate task queue
 4. `/ralph-loop` — Autonomous development
-PROJECT_CLAUDE_MD
+EOF
 
-  log_info "Config files созданы"
-
-  # ─────────────────────────────────────────────────────────────────
-  # Tailwind & PostCSS
-  # ─────────────────────────────────────────────────────────────────
-  cat > "$PROJECT_DIR/tailwind.config.js" << 'TAILWIND_CONFIG'
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./frontend/index.html', './frontend/src/**/*.{js,ts,jsx,tsx}'],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-};
-TAILWIND_CONFIG
-
-  cat > "$PROJECT_DIR/postcss.config.js" << 'POSTCSS_CONFIG'
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-POSTCSS_CONFIG
-
-  # Vite config
-  cat > "$PROJECT_DIR/frontend/vite.config.ts" << 'VITE_CONFIG'
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-
-export default defineConfig({
-  plugins: [react()],
-  root: './frontend',
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-    },
-  },
-});
-VITE_CONFIG
-
-  log_info "Tailwind & Vite настроены"
+  log_info "Project .claude/ настроен"
 }
 
-# 10. Install dependencies
-install_dependencies() {
-  log_step "Устанавливаю зависимости (pnpm install)..."
+# ═══════════════════════════════════════════════════════════════════════════
+# 9. START DOCKER & WAIT FOR SERVICES
+# ═══════════════════════════════════════════════════════════════════════════
+
+start_docker_services() {
+  if ! command -v docker &> /dev/null || ! docker info &>/dev/null; then
+    log_warn "Docker не доступен — пропускаю запуск контейнеров"
+    return
+  fi
+
+  log_step "Запускаю Docker контейнеры..."
 
   cd "$PROJECT_DIR"
 
-  if pnpm install 2>/dev/null; then
-    log_info "Зависимости установлены"
-  else
-    log_warn "pnpm install завершился с ошибками — попробуй запустить вручную"
+  # Stop existing containers if any
+  docker compose down -v 2>/dev/null || true
+
+  # Start
+  docker compose up -d
+
+  log_info "Docker контейнеры запущены"
+
+  # Wait for PostgreSQL
+  log_step "Жду готовности PostgreSQL..."
+  local max=30
+  local attempt=0
+  while [ $attempt -lt $max ]; do
+    if docker compose exec -T postgres pg_isready -U postgres &>/dev/null; then
+      log_info "PostgreSQL готов"
+      break
+    fi
+    sleep 1
+    ((attempt++))
+  done
+
+  # Wait for Redis
+  attempt=0
+  while [ $attempt -lt $max ]; do
+    if docker compose exec -T redis redis-cli ping &>/dev/null; then
+      log_info "Redis готов"
+      break
+    fi
+    sleep 1
+    ((attempt++))
+  done
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 10. INSTALL DEPENDENCIES & SETUP DB
+# ═══════════════════════════════════════════════════════════════════════════
+
+install_and_setup() {
+  log_step "Устанавливаю зависимости (pnpm install)..."
+
+  cd "$PROJECT_DIR"
+  pnpm install
+
+  log_info "Зависимости установлены"
+
+  # Prisma generate & push
+  if command -v docker &> /dev/null && docker info &>/dev/null; then
+    log_step "Настраиваю Prisma..."
+    cd "$PROJECT_DIR/backend"
+    pnpm db:generate 2>/dev/null || true
+    pnpm db:push 2>/dev/null || true
+    cd "$PROJECT_DIR"
+    log_info "Prisma настроена"
   fi
 }
 
-# 11. Initialize git
+# ═══════════════════════════════════════════════════════════════════════════
+# 11. VERIFY SERVERS
+# ═══════════════════════════════════════════════════════════════════════════
+
+verify_servers() {
+  log_step "Проверяю что backend запускается..."
+
+  cd "$PROJECT_DIR/backend"
+  pnpm dev &
+  local pid=$!
+
+  sleep 3
+
+  local attempt=0
+  while [ $attempt -lt 15 ]; do
+    if curl -s "http://localhost:${BACKEND_PORT}/api/health" | grep -q '"status":"ok"'; then
+      log_info "Backend работает: http://localhost:${BACKEND_PORT}/api/health"
+      kill $pid 2>/dev/null || true
+      cd "$PROJECT_DIR"
+      return
+    fi
+    sleep 1
+    ((attempt++))
+  done
+
+  kill $pid 2>/dev/null || true
+  cd "$PROJECT_DIR"
+  log_warn "Backend не ответил — проверь вручную"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 12. INIT GIT
+# ═══════════════════════════════════════════════════════════════════════════
+
 init_git() {
   if [ ! -d "$PROJECT_DIR/.git" ]; then
-    log_step "Инициализирую git репозиторий..."
+    log_step "Инициализирую git..."
     cd "$PROJECT_DIR"
     git init -q
     git add .
-    git commit -m "Initial commit from Provide Starter Kit" -q
+    git commit -m "chore: initial project setup with FSD/VSA architecture" -q
     log_info "Git репозиторий создан"
   fi
 }
 
-# Cleanup
+# ═══════════════════════════════════════════════════════════════════════════
+# CLEANUP
+# ═══════════════════════════════════════════════════════════════════════════
+
 cleanup() {
   if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
     rm -rf "$TEMP_DIR"
@@ -705,59 +1163,69 @@ cleanup() {
 
 trap cleanup EXIT
 
-# Print success message
+# ═══════════════════════════════════════════════════════════════════════════
+# SUCCESS MESSAGE
+# ═══════════════════════════════════════════════════════════════════════════
+
 print_success() {
   echo ""
-  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo -e "${GREEN}                                                             ${NC}"
-  echo -e "${GREEN}   ✅  PROVIDE STARTER KIT УСТАНОВЛЕН!                       ${NC}"
-  echo -e "${GREEN}                                                             ${NC}"
-  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${GREEN}                                                                 ${NC}"
+  echo -e "${GREEN}   ✅  PROVIDE STARTER KIT УСТАНОВЛЕН!                           ${NC}"
+  echo -e "${GREEN}                                                                 ${NC}"
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
-  echo -e "  ${CYAN}📁 Создана структура проекта:${NC}"
+  echo -e "  ${CYAN}📁 Структура проекта:${NC}"
   echo ""
-  echo "     backend/          — VSA (Vertical Slice Architecture)"
-  echo "     frontend/         — FSD (Feature-Sliced Design)"
-  echo "     docs/             — PRD, Architecture templates"
-  echo "     docker-compose.yml — PostgreSQL + Redis"
+  echo "     backend/           VSA (Express + Prisma + Zod)"
+  echo "     frontend/          FSD (React + TanStack Query + Tailwind)"
+  echo "     docker-compose.yml PostgreSQL + Redis"
+  echo "     .claude/           Hooks для проекта"
   echo ""
-  echo -e "  ${CYAN}🚀 Следующие шаги:${NC}"
+  echo -e "  ${CYAN}🔌 Сервисы:${NC}"
   echo ""
-  echo "     1. Запусти Docker (опционально):"
-  echo "        docker compose up -d"
+  echo "     PostgreSQL   localhost:${POSTGRES_PORT}"
+  echo "     Redis        localhost:${REDIS_PORT}"
+  echo "     Backend      http://localhost:${BACKEND_PORT}"
+  echo "     Frontend     http://localhost:${FRONTEND_PORT}"
   echo ""
-  echo "     2. Запусти Claude Code:"
-  echo "        claude"
+  echo -e "  ${CYAN}🚀 Запуск:${NC}"
   echo ""
-  echo "     3. Начни разработку:"
-  echo -e "        ${GREEN}/product-brief${NC}    → Бизнес-требования"
-  echo -e "        ${GREEN}/architecture${NC}     → Техническая архитектура"
-  echo -e "        ${GREEN}/validate-sprint${NC}  → Генерация задач"
-  echo -e "        ${GREEN}/ralph-loop${NC}       → Автономная разработка"
+  echo "     pnpm dev        # Backend + Frontend"
+  echo "     docker ps       # Проверить контейнеры"
+  echo ""
+  echo -e "  ${CYAN}🤖 Claude Code:${NC}"
+  echo ""
+  echo "     claude"
+  echo ""
+  echo -e "     ${GREEN}/product-brief${NC}    → Бизнес-требования"
+  echo -e "     ${GREEN}/architecture${NC}     → Техническая архитектура"
+  echo -e "     ${GREEN}/validate-sprint${NC}  → Генерация задач"
+  echo -e "     ${GREEN}/ralph-loop${NC}       → Автономная разработка"
   echo ""
   echo -e "  ${CYAN}💡 Подсказка:${NC} используй ${GREEN}/help${NC} для справки"
   echo ""
-  echo -e "  ${CYAN}📚 Документация:${NC} https://github.com/lindwerg/claude-starter"
-  echo ""
 }
 
-# Main
+# ═══════════════════════════════════════════════════════════════════════════
+# MAIN
+# ═══════════════════════════════════════════════════════════════════════════
+
 main() {
   print_banner
   check_prerequisites
   backup_existing
   clone_repo
   install_claude_config
-  merge_settings
-  merge_mcp
-  install_templates
-  install_tdd_guard
-
-  # NEW: Create project structure
   create_project_structure
-  install_dependencies
+  create_config_files
+  create_backend_files
+  create_frontend_files
+  setup_project_claude
+  start_docker_services
+  install_and_setup
+  verify_servers
   init_git
-
   print_success
 }
 
