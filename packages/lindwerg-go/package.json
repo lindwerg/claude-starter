@@ -1,6 +1,6 @@
 {
   "name": "lindwerg-go",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Create new projects from claude-starter template with BMAD workflow",
   "bin": {
     "lindwerg-go": "./bin/index.js"
