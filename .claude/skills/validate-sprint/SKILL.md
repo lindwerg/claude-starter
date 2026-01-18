@@ -198,6 +198,19 @@ yq '.tasks | length' .bmad/task-queue.yaml
 yq '.summary' .bmad/task-queue.yaml
 ```
 
+### Step 8: Create Ralph Progress Marker
+
+**MANDATORY** — Create marker file for Ralph Loop auto-commit hook:
+
+```bash
+mkdir -p .bmad && echo "$(date -Iseconds)" > .bmad/ralph-in-progress
+```
+
+This enables:
+- Auto-commit after each Edit/Write
+- Context warnings specific to Ralph
+- Resume prompt after /clear
+
 ---
 
 ## Output Summary
