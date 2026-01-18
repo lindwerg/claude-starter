@@ -20,6 +20,10 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/typescript-preflight.sh",
             "timeout": 40000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ralph-auto-commit.sh"
           }
         ]
       },
@@ -39,6 +43,10 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sprint-plan-post-validator.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ralph-auto-commit.sh"
           }
         ]
       }
