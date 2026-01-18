@@ -14,7 +14,17 @@
     ],
     "PostToolUse": [
       {
-        "matcher": ["Edit", "Write"],
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/typescript-preflight.sh",
+            "timeout": 40000
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
         "hooks": [
           {
             "type": "command",
@@ -23,22 +33,8 @@
           },
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/vsa-validate.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
             "command": "$HOME/.claude/hooks/auto-format.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
+          },
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/sprint-plan-post-validator.sh",
@@ -49,7 +45,25 @@
     ],
     "SessionStart": [
       {
-        "matcher": ["resume", "compact", "clear"],
+        "matcher": "resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/session-start-continuity.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/session-start-continuity.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "clear",
         "hooks": [
           {
             "type": "command",
