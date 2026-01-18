@@ -347,7 +347,7 @@ EOF
     "build": "tsc",
     "start": "node dist/app.js",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src",
     "test": "vitest",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -364,13 +364,16 @@ EOF
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.18.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.7",
+    "eslint": "^9.18.0",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vitest": "^4.0.17"
+    "typescript-eslint": "^8.22.0",
+    "vitest": "^3.0.4"
   }
 }
 EOF
@@ -427,7 +430,8 @@ EOF
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint src",
+    "test": "vitest"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.64.1",
@@ -436,14 +440,23 @@ EOF
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.18.0",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "jsdom": "^26.0.0",
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
-    "vite": "^6.0.7"
+    "typescript-eslint": "^8.22.0",
+    "vite": "^6.0.7",
+    "vitest": "^3.0.4"
   }
 }
 EOF
@@ -738,10 +751,10 @@ export function getHealthStatus(): HealthStatus {
 EOF
 
   cat > "$PROJECT_DIR/backend/src/features/health/health.controller.ts" << 'EOF'
-import { Router } from 'express';
+import { Router, type Router as RouterType } from 'express';
 import { getHealthStatus } from './health.service.js';
 
-const router = Router();
+const router: RouterType = Router();
 
 router.get('/', (_req, res) => {
   res.json(getHealthStatus());
@@ -813,6 +826,62 @@ datasource db {
 //   email     String   @unique
 //   createdAt DateTime @default(now())
 // }
+EOF
+
+  # ESLint config (flat config for ESLint 9)
+  cat > "$PROJECT_DIR/backend/eslint.config.mjs" << 'EOF'
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    ignores: ['dist/**', 'node_modules/**'],
+  },
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  }
+);
+EOF
+
+  # Vitest config
+  cat > "$PROJECT_DIR/backend/vitest.config.ts" << 'EOF'
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+  },
+});
+EOF
+
+  # Example test for health service
+  cat > "$PROJECT_DIR/backend/src/features/health/health.service.test.ts" << 'EOF'
+import { describe, it, expect } from 'vitest';
+import { getHealthStatus } from './health.service.js';
+
+describe('Health Service', () => {
+  it('should return health status with required fields', () => {
+    const status = getHealthStatus();
+
+    expect(status).toHaveProperty('status', 'ok');
+    expect(status).toHaveProperty('timestamp');
+    expect(status).toHaveProperty('uptime');
+    expect(typeof status.uptime).toBe('number');
+  });
+
+  it('should return valid ISO timestamp', () => {
+    const status = getHealthStatus();
+    const date = new Date(status.timestamp);
+
+    expect(date.toString()).not.toBe('Invalid Date');
+  });
+});
 EOF
 
   log_info "Backend файлы созданы"
@@ -928,11 +997,12 @@ EOF
   cat > "$PROJECT_DIR/frontend/src/pages/home/ui/HomePage.tsx" << 'EOF'
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api';
+import type { HealthResponse } from '@/shared/types';
 
 export function HomePage(): JSX.Element {
   const { data, isLoading, error } = useQuery({
     queryKey: ['health'],
-    queryFn: () => apiClient.get('/api/health'),
+    queryFn: () => apiClient.get<HealthResponse>('/api/health'),
   });
 
   return (
@@ -988,9 +1058,18 @@ export { apiClient } from './client';
 EOF
 
   # Barrel exports
-  for dir in ui lib hooks types; do
+  for dir in ui lib hooks; do
     echo "// Export shared ${dir} here" > "$PROJECT_DIR/frontend/src/shared/$dir/index.ts"
   done
+
+  # Shared types
+  cat > "$PROJECT_DIR/frontend/src/shared/types/index.ts" << 'EOF'
+export interface HealthResponse {
+  status: string;
+  timestamp: string;
+  uptime: number;
+}
+EOF
 
   # Tailwind config
   cat > "$PROJECT_DIR/frontend/tailwind.config.js" << 'EOF'
@@ -1009,6 +1088,65 @@ export default {
     autoprefixer: {},
   },
 };
+EOF
+
+  # ESLint config (flat config for ESLint 9)
+  cat > "$PROJECT_DIR/frontend/eslint.config.mjs" << 'EOF'
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+
+export default tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    ignores: ['dist/**', 'node_modules/**'],
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: {
+      react: reactPlugin,
+      'react-hooks': reactHooksPlugin,
+    },
+    settings: {
+      react: { version: 'detect' },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  }
+);
+EOF
+
+  # Vitest config
+  cat > "$PROJECT_DIR/frontend/vitest.config.ts" << 'EOF'
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+});
+EOF
+
+  # Test setup
+  mkdir -p "$PROJECT_DIR/frontend/src/test"
+  cat > "$PROJECT_DIR/frontend/src/test/setup.ts" << 'EOF'
+import '@testing-library/jest-dom';
 EOF
 
   log_info "Frontend файлы созданы"
