@@ -1,6 +1,6 @@
 {
   "name": "lindwerg-go",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Provide Starter Kit — автономная разработка full-stack приложений с Claude Code",
   "keywords": [
     "cli",
@@ -12,7 +12,9 @@
     "fsd",
     "vsa",
     "fullstack",
-    "autonomous"
+    "autonomous",
+    "ralph-loop",
+    "bmad"
   ],
   "homepage": "https://github.com/lindwerg/claude-starter#readme",
   "bugs": {
@@ -25,7 +27,8 @@
   "license": "MIT",
   "author": "lindwerg",
   "bin": {
-    "lindwerg-go": "./bin/cli.js"
+    "lindwerg-go": "./bin/cli.js",
+    "provide-starter": "./bin/cli.js"
   },
   "files": [
     "bin",
@@ -34,5 +37,8 @@
   ],
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
