@@ -162,6 +162,51 @@ fi
 | ralph-continue | Stop | `.claude/hooks/ralph-continue.sh` | Авто-продолжение если pending tasks |
 | ralph-sprint-completion | Stop | `.claude/hooks/ralph-sprint-completion.sh` | Архивация спринта, блокировка |
 
+### Версионирование Hooks
+
+**Текущая версия**: 2.1.0
+
+См. [`.claude/hooks/CHANGELOG.md`](./.claude/hooks/CHANGELOG.md) для истории изменений и миграционных инструкций.
+
+**Последние улучшения (v2.1.0)**:
+- ⚡ **Performance**: Миграция 4 hooks на pre-compiled JavaScript (~10x faster)
+- 🛡️ **Reliability**: Исправление race condition в `subagent-enforcement.sh` (UUID markers)
+- ✅ **Testing**: Automated test suite для критических hooks (80%+ coverage)
+- 📚 **Documentation**: Детальный README с best practices и архитектурными паттернами
+
+### Тестирование Hooks
+
+Критические hooks покрыты автоматическими тестами:
+
+```bash
+# Запуск всех тестов
+bash .claude/hooks/tests/hooks/*.test.sh
+
+# Конкретный hook
+bash .claude/hooks/tests/hooks/subagent-enforcement.test.sh
+```
+
+**Пример вывода**:
+```
+=== Testing subagent-enforcement.sh ===
+
+Suite 1: Ralph Loop Not Active
+  Testing: Allow edit when Ralph not active... ✓ PASS
+
+Suite 2: Ralph Active, Whitelisted Files
+  Testing: Allow .bmad/ file edits... ✓ PASS
+  Testing: Allow .claude/ file edits... ✓ PASS
+  ...
+
+Results: 15 passed, 0 failed
+```
+
+### Детальная документация
+
+Полная документация по hooks системе:
+- [`.claude/hooks/README.md`](./.claude/hooks/README.md) — Архитектура, best practices, development guide
+- [`.claude/hooks/CHANGELOG.md`](./.claude/hooks/CHANGELOG.md) — Version history и breaking changes
+
 ---
 
 ## ⚡ Ralph Loop
