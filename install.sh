@@ -94,10 +94,10 @@ install_components() {
   log_step "Устанавливаю компоненты..."
 
   # Create directories
-  mkdir -p "$CLAUDE_DIR"/{skills,rules,hooks,commands,agents,templates,scripts}
+  mkdir -p "$CLAUDE_DIR"/{skills,rules,hooks,commands,agents,templates,scripts,orchestrator}
 
   # Copy components (don't overwrite existing files)
-  local components=("skills" "rules" "hooks" "commands" "agents")
+  local components=("skills" "rules" "hooks" "commands" "agents" "orchestrator")
 
   for component in "${components[@]}"; do
     local src_dir="$TEMP_DIR/claude-starter/.claude/$component"
@@ -120,6 +120,10 @@ install_components() {
 
   # Make hook scripts executable
   chmod +x "$CLAUDE_DIR/hooks/"*.sh 2>/dev/null || true
+
+  # Make orchestrator scripts executable (Ralph)
+  chmod +x "$CLAUDE_DIR/orchestrator/ralph" 2>/dev/null || true
+  chmod +x "$CLAUDE_DIR/orchestrator/lib/"*.sh 2>/dev/null || true
 }
 
 # 5. Merge settings.json
@@ -210,7 +214,20 @@ install_claude_md() {
   fi
 }
 
-# 9. Install Provide workflows (replaces BMAD)
+# 9. Install TDD Guard globally
+install_tdd_guard() {
+  if ! command -v tdd-guard &> /dev/null; then
+    log_step "Устанавливаю TDD Guard глобально..."
+    npm install -g tdd-guard 2>/dev/null || log_warn "Не удалось установить tdd-guard"
+    if command -v tdd-guard &> /dev/null; then
+      log_info "TDD Guard установлен"
+    fi
+  else
+    log_info "TDD Guard уже установлен"
+  fi
+}
+
+# 10. Install Provide workflows (replaces BMAD)
 install_provide() {
   log_step "Устанавливаю Provide workflows..."
 
@@ -313,7 +330,8 @@ main() {
   merge_mcp
   install_templates
   install_claude_md
-  install_provide  # Install Provide workflows
+  install_tdd_guard    # Install TDD Guard globally
+  install_provide      # Install Provide workflows
   print_success
 }
 

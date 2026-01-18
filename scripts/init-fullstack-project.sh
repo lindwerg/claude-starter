@@ -221,11 +221,27 @@ EOF
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.7",
     "prisma": "^6.2.1",
+    "tdd-guard-vitest": "^0.1.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "vitest": "^4.0.17"
   }
 }
+EOF
+
+  # Backend vitest.config.ts with TDD Guard
+  cat > backend/vitest.config.ts << 'EOF'
+import { defineConfig } from 'vitest/config';
+import { VitestReporter } from 'tdd-guard-vitest';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['**/*.test.ts', '**/*.spec.ts'],
+    reporters: ['default', new VitestReporter(process.cwd())],
+  },
+});
 EOF
 
   # Frontend package.json
@@ -406,16 +422,15 @@ import { env } from '../config/env.js';
 
 export const logger = pino({
   level: env.NODE_ENV === 'production' ? 'info' : 'debug',
-  transport:
-    env.NODE_ENV === 'development'
-      ? {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-          },
-        }
-      : undefined,
+  ...(env.NODE_ENV === 'development' && {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        translateTime: 'SYS:standard',
+      },
+    },
+  }),
 });
 EOF
 
