@@ -1134,6 +1134,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    passWithNoTests: true,
   },
   resolve: {
     alias: {
@@ -1147,6 +1148,26 @@ EOF
   mkdir -p "$PROJECT_DIR/frontend/src/test"
   cat > "$PROJECT_DIR/frontend/src/test/setup.ts" << 'EOF'
 import '@testing-library/jest-dom';
+EOF
+
+  # Example test for shared types
+  cat > "$PROJECT_DIR/frontend/src/shared/types/types.test.ts" << 'EOF'
+import { describe, it, expect } from 'vitest';
+import type { HealthResponse } from './index';
+
+describe('HealthResponse type', () => {
+  it('should have correct shape', () => {
+    const response: HealthResponse = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: 123,
+    };
+
+    expect(response.status).toBe('ok');
+    expect(typeof response.uptime).toBe('number');
+    expect(response.timestamp).toBeDefined();
+  });
+});
 EOF
 
   log_info "Frontend файлы созданы"
