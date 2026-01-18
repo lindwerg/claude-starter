@@ -79,14 +79,13 @@ echo
 read -p "Continue? [Y/n]: " CONFIRM
 [ "$CONFIRM" = "n" ] && exit 0
 
-# 5. Копирование starter
-echo -e "\n${GREEN}[1/5]${NC} Copying claude-starter..."
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STARTER_DIR="$(dirname "$SCRIPT_DIR")"
-
-# Копируем без .git
-rsync -a --exclude='.git' "$STARTER_DIR/" "$PARENT_DIR/$PROJECT_NAME/"
+# 5. Клонирование starter с GitHub
+echo -e "\n${GREEN}[1/5]${NC} Cloning claude-starter from GitHub..."
+git clone -q --depth 1 https://github.com/lindwerg/claude-starter.git "$PARENT_DIR/$PROJECT_NAME"
 cd "$PARENT_DIR/$PROJECT_NAME"
+
+# Удаляем .git от клона
+rm -rf .git
 
 # 6. Инициализация git
 echo -e "${GREEN}[2/5]${NC} Initializing fresh git repo..."
