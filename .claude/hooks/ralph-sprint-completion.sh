@@ -10,4 +10,4 @@
 set -e
 
 cd "$CLAUDE_PROJECT_DIR/.claude/hooks"
-cat | npx tsx src/ralph-sprint-completion.ts
+cat | node dist/ralph-sprint-completion.js

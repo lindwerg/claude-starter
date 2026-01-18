@@ -28,6 +28,6 @@ if [ ! -f "$PROJECT_DIR/.bmad/task-queue.yaml" ]; then
     exit 0
 fi
 
-# Run TypeScript handler
+# Run pre-compiled handler (10x faster than npx tsx)
 cd "$PROJECT_DIR/.claude/hooks"
-cat | npx tsx src/task-verification.ts
+cat | node dist/task-verification.js

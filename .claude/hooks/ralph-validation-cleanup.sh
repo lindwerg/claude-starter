@@ -9,4 +9,4 @@
 set -e
 
 cd "$CLAUDE_PROJECT_DIR/.claude/hooks"
-cat | npx tsx src/ralph-validation-cleanup.ts
+cat | node dist/ralph-validation-cleanup.js

@@ -9,4 +9,4 @@
 set -e
 
 cd "$CLAUDE_PROJECT_DIR/.claude/hooks"
-cat | npx tsx src/ralph-validation-enforcer.ts
+cat | node dist/ralph-validation-enforcer.js
