@@ -4,9 +4,19 @@ description: Autonomous implementation loop with atomic task queue. Use when imp
 allowed-tools: [Bash, Read, Write, Edit, Grep, Glob, Task, TodoWrite]
 ---
 
-## MANDATORY: SUBAGENT EXECUTION
+## MANDATORY: FIRST ACTIONS
 
-**CRITICAL REQUIREMENT — DO NOT IGNORE**
+**CRITICAL — DO THESE IMMEDIATELY BEFORE ANYTHING ELSE**
+
+### 1. Create Progress Marker (FIRST!)
+
+```bash
+mkdir -p .bmad && echo "$(date -Iseconds)" > .bmad/ralph-in-progress
+```
+
+Run this Bash command RIGHT NOW before reading task queue.
+
+### 2. Use Subagents for Tasks
 
 Ralph MUST execute each task via Task tool subagent. NEVER execute tasks directly in main context.
 
