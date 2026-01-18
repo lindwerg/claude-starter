@@ -75,29 +75,43 @@ src/
 
 ```bash
 mkdir my-app && cd my-app
-/step1-init        # Создание структуры проекта
+/init-project      # Создание структуры проекта
+/workflow-init     # Инициализация BMAD
 ```
 
-## 7 шагов разработки
+## Workflow разработки
+
+### Основной процесс (BMAD Method)
 
 | Шаг | Команда | Описание |
 |-----|---------|----------|
-| 1 | `/step1-init` | Создание структуры проекта |
-| 2 | `/step2-brief` | Бизнес-анализ требований |
-| 3 | `/step3-prd` | Документ требований (PRD) |
-| 4 | `/step4-arch` | Техническая архитектура |
-| 5 | `/step5-sprint` | Планирование спринта |
-| 6 | `/step6-validate` | Валидация и очередь задач |
-| 7 | `/step7-build` | Автономная разработка |
+| 1 | `/init-project` | Создание структуры проекта |
+| 2 | `/workflow-init` | Инициализация BMAD |
+| 3 | `/product-brief` | Бизнес-анализ требований |
+| 4 | `/prd` | Документ требований (PRD) |
+| 5 | `/architecture` | Техническая архитектура |
+| 6 | `/sprint-planning` | Планирование спринта |
+| 7 | `/validate-sprint` | Валидация и очередь задач |
+| 8 | `/ralph-loop` | Автономная разработка |
 
 ## Дополнительные команды
 
-- `/help` — Справка
+### Разработка
+- `/create-story` — Создать отдельную story
+- `/dev-story` — Разработать одну story вручную
+- `/tech-spec` — Техническая спецификация (для Level 0-1 проектов)
+
+### Статус и валидация
+- `/workflow-status` — Статус прогресса проекта
+- `/validate-all` — Полная валидация архитектуры
+- `/validate-sprint` — Валидация спринта + генерация task-queue
+
+### Утилиты
+- `/help` — Справка по командам
 - `/commit` — Git commit (без Claude attribution)
-- `/validate-all` — Полная валидация
 
-## Advanced команды
-
-- `/advanced:brainstorm` — Мозговой штурм
-- `/advanced:research` — Исследование темы
-- `/advanced:workflow-status` — Статус прогресса
+### Advanced
+- `/bmad:brainstorm` — Мозговой штурм
+- `/bmad:research` — Исследование темы
+- `/bmad:create-ux-design` — Создание UX дизайна
+- `/bmad:solutioning-gate-check` — Проверка готовности к разработке

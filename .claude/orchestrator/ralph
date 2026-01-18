@@ -203,6 +203,75 @@ increment_task_retries() {
     yq -i "(.tasks[] | select(.id == \"$task_id\")).retries += 1" "$TASK_QUEUE"
 }
 
+update_task_blocker() {
+    local task_id="$1"
+    local reason="$2"
+    yq -i "(.tasks[] | select(.id == \"$task_id\")).blocker_reason = \"$reason\"" "$TASK_QUEUE"
+}
+
+#------------------------------------------------------------------------------
+# ADAPTIVE UNBLOCKING
+#------------------------------------------------------------------------------
+
+analyze_blocker() {
+    local reason="$1"
+
+    # 401 Unauthorized - missing auth
+    if echo "$reason" | grep -qiE "401|unauthorized|authentication required"; then
+        echo "missing_auth"
+    # Missing dependency
+    elif echo "$reason" | grep -qiE "cannot find module|import.*not found|module not found"; then
+        echo "missing_dependency"
+    # Schema mismatch
+    elif echo "$reason" | grep -qiE "prisma|column.*not found|relation.*does not exist"; then
+        echo "schema_mismatch"
+    # API endpoint missing
+    elif echo "$reason" | grep -qiE "404|endpoint.*not found|cannot (GET|POST|PUT|DELETE)"; then
+        echo "missing_endpoint"
+    else
+        echo "unknown"
+    fi
+}
+
+generate_unblock_task() {
+    local blocker_type="$1"
+    local blocked_task_id="$2"
+    local reason="$3"
+
+    case "$blocker_type" in
+        missing_auth)
+            log_info "Detected missing_auth blocker - generating auth story"
+
+            # Create STORY-000: Basic JWT Authentication
+            local script_path="$CLAUDE_PROJECT_DIR/.claude/orchestrator/lib/generate-auth-story.sh"
+            if [ -f "$script_path" ]; then
+                bash "$script_path" "$blocked_task_id"
+                log_success "Auth story STORY-000 created and inserted before $blocked_task_id"
+                return 0
+            else
+                log_error "generate-auth-story.sh not found at: $script_path"
+                return 1
+            fi
+            ;;
+        missing_dependency)
+            log_warn "Blocker type 'missing_dependency' - TODO: implement auto-fix"
+            return 1
+            ;;
+        schema_mismatch)
+            log_warn "Blocker type 'schema_mismatch' - TODO: implement auto-fix"
+            return 1
+            ;;
+        missing_endpoint)
+            log_warn "Blocker type 'missing_endpoint' - TODO: implement auto-fix"
+            return 1
+            ;;
+        *)
+            log_warn "Unknown blocker type: $blocker_type"
+            return 1
+            ;;
+    esac
+}
+
 #------------------------------------------------------------------------------
 # CLAUDE EXECUTION
 #------------------------------------------------------------------------------
@@ -280,6 +349,10 @@ run_claude_task() {
     elif echo "$output" | grep -q "<ralph-blocked>"; then
         local reason=$(echo "$output" | grep -oP '(?<=<ralph-blocked>).*(?=</ralph-blocked>)' || echo "unknown")
         log_error "Task blocked: $reason"
+
+        # ADAPTIVE: Save blocker reason to task metadata
+        update_task_blocker "$task_id" "$reason"
+
         return 2
     else
         log_warn "No completion marker found"
@@ -417,8 +490,35 @@ main() {
                 update_task_status "$task_id" "pending"
                 log_warn "Task failed. Retry $((retries + 1))/$MAX_RETRIES_PER_TASK"
             else
-                update_task_status "$task_id" "blocked" "Failed after $MAX_RETRIES_PER_TASK retries"
-                log_error "Task blocked after max retries"
+                # Max retries reached - try adaptive unblocking
+                local blocker_reason=$(yq -r ".tasks[] | select(.id == \"$task_id\") | .blocker_reason // \"\"" "$TASK_QUEUE")
+
+                if [ -n "$blocker_reason" ]; then
+                    log_warn "═══════════════════════════════════════════════════════════════"
+                    log_warn "ADAPTIVE UNBLOCKING: Analyzing blocker"
+                    log_warn "Reason: $blocker_reason"
+
+                    local blocker_type=$(analyze_blocker "$blocker_reason")
+                    log_info "Blocker type: $blocker_type"
+
+                    if generate_unblock_task "$blocker_type" "$task_id" "$blocker_reason"; then
+                        # Unblock task generated successfully
+                        log_success "Unblock task created. Resetting current task to pending."
+                        update_task_status "$task_id" "pending"
+                        yq -i "(.tasks[] | select(.id == \"$task_id\")).retries = 0" "$TASK_QUEUE"
+                        log_event "adaptive_unblock" "{\"task_id\":\"$task_id\",\"blocker_type\":\"$blocker_type\"}"
+                    else
+                        # Could not auto-unblock
+                        update_task_status "$task_id" "blocked" "Failed after $MAX_RETRIES_PER_TASK retries. Auto-unblock failed for: $blocker_type"
+                        log_error "Task blocked after max retries (auto-unblock failed)"
+                        log_event "task_blocked" "{\"task_id\":\"$task_id\",\"reason\":\"auto_unblock_failed\",\"blocker_type\":\"$blocker_type\"}"
+                    fi
+                else
+                    # No blocker reason available
+                    update_task_status "$task_id" "blocked" "Failed after $MAX_RETRIES_PER_TASK retries"
+                    log_error "Task blocked after max retries"
+                    log_event "task_blocked" "{\"task_id\":\"$task_id\",\"reason\":\"max_retries\"}"
+                fi
             fi
         fi
 
