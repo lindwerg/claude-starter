@@ -178,32 +178,10 @@ tasks:
   # ... continue for all tasks
 ```
 
-### Step 6.5: Generate Flow-Next Documentation
-
-**IMPORTANT:** After generating task-queue.yaml, convert to Flow-Next format for Ralph.
-
-```bash
-# Run converter script
-python3 .claude/scripts/bmad-to-flow.py --task-queue .bmad/task-queue.yaml
-```
-
-This creates:
-- `.flow/epics/fn-1.json` — Epic for Sprint
-- `.flow/specs/fn-1.md` — Sprint spec
-- `.flow/tasks/fn-1.*.json` — Tasks with dependencies
-- `.flow/tasks/fn-1.*.md` — Task specs with acceptance criteria
-
-**Verify Flow-Next structure:**
-```bash
-./scripts/ralph/flowctl epics --json
-./scripts/ralph/flowctl tasks --epic fn-1 --json
-./scripts/ralph/flowctl ready --epic fn-1 --json
-```
-
 ### Step 7: Final Verification
 
 ```bash
-# Verify BMAD file created
+# Verify file created
 cat .bmad/task-queue.yaml | head -20
 
 # Count tasks
@@ -211,9 +189,6 @@ yq '.tasks | length' .bmad/task-queue.yaml
 
 # Show summary
 yq '.summary' .bmad/task-queue.yaml
-
-# Verify Flow-Next
-./scripts/ralph/flowctl status --json
 ```
 
 ---
@@ -242,18 +217,9 @@ Stories: 3
 Tasks: 27
 Estimated hours: 18.5
 
-### Flow-Next Structure Generated
+### Ready for Ralph Loop ✅
 
-Epic: fn-1 (Sprint 1)
-Tasks: 27 in .flow/tasks/
-Specs: 27 task specs with acceptance criteria
-
-### Ready for Flow-Next Ralph ✅
-
-Run from TERMINAL (not Claude Code):
-```bash
-./scripts/ralph/ralph.sh
-```
+Run: /ralph-loop
 ```
 
 ---
@@ -298,13 +264,6 @@ Run /bmad:sprint-planning first
 ```bash
 # Full workflow
 /bmad:sprint-planning    # Create sprint plan
-/validate-sprint         # Validate + generate task queue + Flow-Next
-
-# Run Ralph from TERMINAL (not Claude Code!)
-./scripts/ralph/ralph.sh           # Full autonomous loop
-./scripts/ralph/ralph_once.sh      # Single iteration (test)
-
-# Monitor progress
-./scripts/ralph/flowctl status --json
-./scripts/ralph/flowctl ready --epic fn-1 --json
+/validate-sprint         # Validate + generate task queue
+/ralph-loop              # Execute tasks
 ```
