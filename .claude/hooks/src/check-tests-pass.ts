@@ -85,6 +85,24 @@ function parseCoverage(output: string): number | undefined {
   return undefined;
 }
 
+function extractFailedTests(output: string): string[] {
+  const failedTests: string[] = [];
+
+  // Jest format: "● Test suite › test name"
+  const jestMatches = output.match(/●\s+(.+)/g);
+  if (jestMatches) {
+    failedTests.push(...jestMatches.map(m => m.replace(/^●\s+/, '').trim()).slice(0, 5));
+  }
+
+  // Vitest format: "FAIL test/file.test.ts > test name"
+  const vitestMatches = output.match(/FAIL\s+(.+?)>/g);
+  if (vitestMatches) {
+    failedTests.push(...vitestMatches.map(m => m.replace(/FAIL\s+/, '').trim()).slice(0, 5));
+  }
+
+  return failedTests;
+}
+
 function formatTestSummary(result: TestResult): string {
   let summary = '';
 
@@ -156,9 +174,15 @@ async function main(): Promise<void> {
       blockReasons.push(`coverage ${testResult.coverage.toFixed(2)}% < ${COVERAGE_THRESHOLD}%`);
     }
 
+    // Extract failed test names from output
+    const failedTests = extractFailedTests(testResult.output);
+    const failedTestsList = failedTests.length > 0
+      ? '\n\n❌ Failed tests:\n' + failedTests.map(t => `  - ${t}`).join('\n')
+      : '';
+
     const result: HookOutput = {
       result: 'block',
-      message: `Cannot complete: ${blockReasons.join(', ')}\n\n${summary}`,
+      message: `❌ QUALITY GATE FAILED: ${blockReasons.join(', ')}\n\n${summary}${failedTestsList}\n\n✅ FIX BEFORE CONTINUING:\n1. Review test failures: npm test\n2. Fix failing tests or update expectations\n3. Ensure coverage >= ${COVERAGE_THRESHOLD}%\n4. Verify: npm test (should pass)`,
     };
     output(result);
     return;

@@ -27,10 +27,13 @@ fi
 if [[ "$arch_exists" == "true" ]]; then
   # Check for INF-* patterns or infrastructure-related content
   if echo "$content" | grep -qiE "(INF-[0-9]+|### Infrastructure Stories|STORY-INF-|Настройка monorepo|Настройка PostgreSQL|Настройка Redis|Настройка CI/CD|Database Schema.*Setup|Backend Skeleton|Frontend Setup|Docker Setup)"; then
-    cat << 'EOF'
+    # Extract detected patterns for better error context
+    DETECTED=$(echo "$content" | grep -iE "(INF-[0-9]+|### Infrastructure Stories|STORY-INF-|Настройка monorepo|Настройка PostgreSQL|Настройка Redis|Настройка CI/CD|Database Schema.*Setup|Backend Skeleton|Frontend Setup|Docker Setup)" | head -3 | sed 's/^/  - /')
+
+    cat << EOF
 {
   "result": "block",
-  "message": "⚠️ BLOCKED: Architecture skeleton already exists!\n\n/architecture already created:\n- backend/src/ (VSA skeleton)\n- frontend/src/ (FSD skeleton)\n- prisma/schema.prisma\n- docker-compose.yml\n- CI/CD, ESLint, Prettier\n\n❌ FORBIDDEN: INF-*, 'Infrastructure Stories', 'Database Schema Setup', 'Project Setup'\n\n✅ REQUIRED: First story MUST be a BUSINESS FEATURE:\n- TMA Authentication\n- Data Pipeline Integration\n- User Registration API\n\nPlease recreate sprint plan WITHOUT infrastructure stories."
+  "message": "⚠️ BLOCKED: Architecture skeleton already exists!\n\n/architecture already created:\n- backend/src/ (VSA skeleton)\n- frontend/src/ (FSD skeleton)\n- prisma/schema.prisma\n- docker-compose.yml\n- CI/CD, ESLint, Prettier\n\n🔍 DETECTED FORBIDDEN PATTERNS:\n$DETECTED\n\n❌ FORBIDDEN: INF-*, 'Infrastructure Stories', 'Database Schema Setup', 'Project Setup'\n\n✅ REQUIRED: First story MUST be a BUSINESS FEATURE:\n- TMA Authentication\n- Data Pipeline Integration\n- User Registration API\n\n📝 FIX:\n1. Remove all infrastructure stories from sprint plan\n2. Start with business features that use existing skeleton\n3. Re-run sprint planning command"
 }
 EOF
     exit 0
