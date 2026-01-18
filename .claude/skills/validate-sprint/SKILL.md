@@ -27,6 +27,34 @@ Post-validation skill for sprint planning. Run after `/bmad:sprint-planning`.
 
 ## Workflow
 
+### Step 0: Check for Multi-Sprint Context
+
+**Purpose:** Determine if this is Sprint 1 or a continuation from a previous sprint.
+
+```bash
+# Check for validation marker (created by ralph-sprint-completion hook)
+ls -la .bmad/sprint-validation-pending 2>/dev/null
+
+# Check for archived sprints
+ls -d .bmad/history/sprint-* 2>/dev/null | tail -1
+```
+
+**Logic:**
+
+1. **If `.bmad/sprint-validation-pending` exists:**
+   - CONTEXT: Continuation from previous sprint
+   - Read last archived sprint: `ls -d .bmad/history/sprint-* | tail -1`
+   - Extract sprint number from directory name (e.g., `sprint-1` → 1)
+   - **NEXT_SPRINT** = LAST_SPRINT + 1
+
+2. **If marker does NOT exist:**
+   - CONTEXT: First sprint (fresh start)
+   - **NEXT_SPRINT** = 1
+
+**Output:** Set variable `NEXT_SPRINT` for use in Step 5 (task queue generation).
+
+---
+
 ### Step 1: Find Sprint Plan
 
 ```bash
@@ -60,9 +88,9 @@ Read sprint plan and check:
 
 **If validation fails** → Report errors and STOP.
 
-### Step 4: Extract Sprint 1 Stories
+### Step 4: Extract Stories for Target Sprint
 
-From the sprint plan, find all stories assigned to Sprint 1.
+From the sprint plan, find all stories assigned to **Sprint ${NEXT_SPRINT}** (determined in Step 0).
 
 Parse the stories table:
 ```markdown
@@ -72,9 +100,11 @@ Parse the stories table:
 | DATA-001 | Data Pipeline | 5 | 1 |
 ```
 
+Filter stories where `Sprint == ${NEXT_SPRINT}`.
+
 ### Step 5: Decompose Stories into Atomic Tasks
 
-For EACH story in Sprint 1, create atomic tasks:
+For EACH story in Sprint ${NEXT_SPRINT}, create atomic tasks:
 
 **Decomposition Rules:**
 - 1 task = 30-60 minutes MAX
@@ -133,7 +163,7 @@ Create `.bmad/task-queue.yaml`:
 ```yaml
 version: "1.0"
 project: "{{project_name}}"
-sprint: 1
+sprint: ${NEXT_SPRINT}  # Determined in Step 0 (1 for first sprint, N+1 for continuation)
 created_at: "{{ISO date}}"
 
 summary:

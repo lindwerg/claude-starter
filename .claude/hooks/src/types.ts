@@ -8,6 +8,12 @@ export interface BaseHookInput {
   cwd?: string;
 }
 
+// PreToolUse hook input
+export interface PreToolUseInput extends BaseHookInput {
+  tool_name: string;
+  tool_input: Record<string, unknown>;
+}
+
 // PostToolUse hook input
 export interface PostToolUseInput extends BaseHookInput {
   tool_name: string;

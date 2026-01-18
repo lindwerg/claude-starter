@@ -35,6 +35,16 @@
             "timeout": 5000
           }
         ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ralph-validation-enforcer.sh",
+            "timeout": 5000
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -78,6 +88,11 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/task-verification.sh",
             "timeout": 60000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ralph-validation-cleanup.sh",
+            "timeout": 5000
           },
           {
             "type": "command",
@@ -125,6 +140,22 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/pre-compact-save-state.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ralph-continue.sh",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ralph-sprint-completion.sh",
+            "timeout": 60000
           }
         ]
       }

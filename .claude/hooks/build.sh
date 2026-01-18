@@ -21,6 +21,10 @@ HOOKS=(
   "check-tests-pass"
   "session-start-continuity"
   "pre-compact-save-state"
+  "task-verification"
+  "ralph-sprint-completion"
+  "ralph-validation-enforcer"
+  "ralph-validation-cleanup"
 )
 
 # First build types.ts as a separate module
@@ -31,7 +35,8 @@ npx esbuild src/types.ts \
   --outfile=dist/types.js \
   --external:fs \
   --external:path \
-  --external:child_process
+  --external:child_process \
+  --external:yaml
 
 # Build each hook with types bundled
 for hook in "${HOOKS[@]}"; do
@@ -44,7 +49,8 @@ for hook in "${HOOKS[@]}"; do
       --outfile="dist/$hook.js" \
       --external:fs \
       --external:path \
-      --external:child_process
+      --external:child_process \
+      --external:yaml
   fi
 done
 

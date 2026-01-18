@@ -528,9 +528,210 @@ for each task:
       break
     retries++
     if retries >= MAX_RETRIES:
-      mark_blocked(task, result.error)
-      STOP("Human intervention required")
+      # Try adaptive unblocking first
+      if can_auto_unblock(task):
+        create_unblock_tasks(task)
+        reset_retries(task)
+        continue
+      else:
+        mark_blocked(task, result.error)
+        STOP("Human intervention required")
 ```
+
+## Adaptive Unblocking (Auto-Resolution)
+
+**NEW:** Ralph can now automatically resolve certain blockers by creating new tasks.
+
+### Supported Blockers
+
+| Blocker Type | Detection Signal | Resolution |
+|--------------|------------------|------------|
+| `missing_auth` | 401 Unauthorized, "authentication required" | Create STORY-000: Basic JWT Auth (6 tasks) |
+| `missing_dependency` | "cannot find module", "import not found" | Create task to install dependency |
+| `schema_mismatch` | "column not found", Prisma errors | Create migration task |
+| `missing_endpoint` | 404, "endpoint not found" | Create API endpoint task |
+
+### How It Works
+
+```
+Task fails with 401 Unauthorized
+        ↓
+Ralph detects "missing_auth" blocker
+        ↓
+Generates STORY-000: JWT Authentication
+        ↓
+Inserts 6 tasks BEFORE blocked task:
+  - TASK-000-A: Add /auth to openapi.yaml
+  - TASK-000-B: Implement auth service
+  - TASK-000-C: Create controllers
+  - TASK-000-D: Add auth middleware
+  - TASK-000-E: Frontend auth hooks
+  - TASK-000-F: Integration tests
+        ↓
+Blocked task now depends on TASK-000-F
+        ↓
+Resets retries, continues execution
+```
+
+### Example: E2E Test Requires Auth
+
+```yaml
+# Original queue
+tasks:
+  - id: "TASK-006-E2E"
+    title: "E2E tests for Characters page"
+    type: "e2e"
+    status: "blocked"
+    blocker_reason: "401 Unauthorized - authentication required"
+    retries: 3
+
+# After adaptive unblocking
+tasks:
+  - id: "TASK-000-A"
+    story_id: "STORY-000"
+    title: "Add /auth endpoints to openapi.yaml"
+    status: "pending"
+
+  # ... 5 more auth tasks ...
+
+  - id: "TASK-000-F"
+    story_id: "STORY-000"
+    title: "Auth integration tests"
+    status: "pending"
+
+  - id: "TASK-006-E2E"
+    title: "E2E tests for Characters page"
+    status: "pending"  # unblocked!
+    depends_on: ["TASK-006-E", "TASK-000-F"]  # now depends on auth
+    retries: 0  # reset
+```
+
+### When Adaptive Unblocking Fails
+
+If Ralph cannot auto-resolve (e.g., `unknown` blocker type):
+- Task marked as `blocked`
+- Human intervention required
+- Use `/ralph-loop --resume` after fixing
+
+### Blockers Not Auto-Resolved
+
+- Complex architectural issues
+- Business logic decisions
+- Configuration/deployment problems
+- Unknown error types
+
+For these, human must resolve and resume.
+
+---
+
+## ADAPTIVE UNBLOCKING — EXECUTION STEPS
+
+**When task fails after max retries (3), execute these steps BEFORE marking as blocked:**
+
+### Step 1: Save Blocker Reason
+
+```bash
+# Update task-queue.yaml with blocker reason
+yq -i "(.tasks[] | select(.id == \"$TASK_ID\")).blocker_reason = \"$ERROR_MESSAGE\"" .bmad/task-queue.yaml
+```
+
+Save the FULL error message from task failure.
+
+### Step 2: Analyze Blocker Type
+
+Read the blocker_reason and classify:
+
+```bash
+BLOCKER_REASON=$(yq '.tasks[] | select(.id == "'$TASK_ID'") | .blocker_reason' .bmad/task-queue.yaml)
+
+# Classify blocker type
+if echo "$BLOCKER_REASON" | grep -qiE "401|unauthorized|authentication required"; then
+  BLOCKER_TYPE="missing_auth"
+elif echo "$BLOCKER_REASON" | grep -qiE "cannot find module|import.*not found"; then
+  BLOCKER_TYPE="missing_dependency"
+elif echo "$BLOCKER_REASON" | grep -qiE "prisma|column.*not found|relation.*does not exist"; then
+  BLOCKER_TYPE="schema_mismatch"
+elif echo "$BLOCKER_REASON" | grep -qiE "404|endpoint.*not found"; then
+  BLOCKER_TYPE="missing_endpoint"
+else
+  BLOCKER_TYPE="unknown"
+fi
+```
+
+### Step 3: Generate Unblock Tasks
+
+**For missing_auth blocker:**
+
+```bash
+# Call generate-auth-story script
+bash .claude/orchestrator/lib/generate-auth-story.sh "$TASK_ID"
+
+# Script will:
+# 1. Create STORY-000 with 6 auth tasks
+# 2. Insert BEFORE blocked task
+# 3. Add dependency: blocked task depends_on TASK-000-F
+# 4. Update task counts in summary
+```
+
+**After successful generation:**
+
+1. Reset blocked task to `status: "pending"`
+2. Reset `retries: 0`
+3. Continue Ralph Loop — auth tasks will execute first
+4. Blocked task will execute after auth is complete
+
+### Step 4: If Auto-Unblock Fails
+
+If blocker type is "unknown" or script fails:
+- Mark task as `status: "blocked"`
+- Output: `<promise>BLOCKED</promise>`
+- Include blocker_reason in output
+- Stop execution, require human intervention
+
+---
+
+## IMPLEMENTATION IN RALPH LOOP
+
+**When executing Ralph Loop, after task fails 3 times:**
+
+```
+Task: TASK-006-E2E failed (retry 3/3)
+  ↓
+Read error output from last attempt
+  ↓
+Save blocker_reason to YAML (Step 1)
+  ↓
+Analyze blocker type (Step 2)
+  ↓
+IF blocker_type == "missing_auth":
+  ├─ Run: bash .claude/orchestrator/lib/generate-auth-story.sh TASK-006-E2E
+  ├─ Check exit code
+  ├─ IF success (exit 0):
+  │   ├─ Output: "✅ STORY-000 created, 6 auth tasks inserted"
+  │   ├─ Reset TASK-006-E2E: status="pending", retries=0
+  │   └─ Continue loop (auth tasks will execute first)
+  └─ IF fail (exit 1):
+      └─ Mark BLOCKED, require human
+ELSE:
+  └─ Mark BLOCKED, require human
+```
+
+### Example Output
+
+```
+[ralph] Task TASK-006-E2E failed (3/3 retries)
+[ralph] Analyzing blocker...
+[ralph] Blocker type: missing_auth
+[ralph] ⚡ ADAPTIVE UNBLOCKING ACTIVATED
+[ralph] Generating STORY-000: Basic JWT Authentication...
+[ralph] ✅ Created 6 auth tasks (TASK-000-A through TASK-000-F)
+[ralph] ✅ TASK-006-E2E now depends on TASK-000-F
+[ralph] Resetting TASK-006-E2E to pending (retries: 0)
+[ralph]
+[ralph] Continuing with next task: TASK-000-A
+```
+
+---
 
 ## Iteration Limits
 
@@ -541,102 +742,138 @@ limits:
   per_session: 100  # Max tasks per Ralph session
 ```
 
-## Sprint Auto-Continuation
+## Sprint Auto-Continuation (VIA HOOKS)
 
-When all tasks in current sprint are DONE, Ralph automatically continues to next sprint:
+**Sprint auto-continuation is now AUTOMATED via Claude Code hooks.**
+
+Ralph Loop seamlessly transitions between sprints through a **hook-based enforcement system** that ensures quality gates, manual validation, and automatic continuation.
+
+---
+
+### How It Works
 
 ```
-Sprint 1 tasks ALL DONE
+Sprint N → All tasks DONE
         ↓
-Check sprint-plan.md for Sprint 2 stories
+Stop Hook: ralph-sprint-completion.sh
         ↓
-Generate task-queue.yaml for Sprint 2
+1. Generate Sprint Review (stories, commits, learnings)
+2. Run Quality Check (typecheck, lint, test, coverage)
+3. Archive to .bmad/history/sprint-N/
+4. Create marker: .bmad/sprint-validation-pending
+5. Open browser for manual testing
+6. BLOCK Ralph Loop with message
         ↓
-Continue executing Sprint 2 tasks
+🛑 Ralph BLOCKED → User validates in browser
         ↓
-... repeat until ALL SPRINTS DONE
+User runs: /validate-sprint
+        ↓
+validate-sprint skill:
+  - Detects multi-sprint context (Step 0)
+  - Reads last sprint from .bmad/history/sprint-N/
+  - Generates task-queue.yaml for Sprint N+1
+        ↓
+PostToolUse Hook: ralph-validation-cleanup.sh
+  - Removes .bmad/sprint-validation-pending marker
+        ↓
+Stop Hook: ralph-continue.sh
+  - Detects pending tasks → CONTINUE
+        ↓
+Sprint N+1 → Ralph resumes automatically
 ```
 
-### Auto-Continuation Logic
+---
+
+### Enforcement Layers
+
+**1. Sprint Completion Hook (Stop)**
+- File: `.claude/hooks/ralph-sprint-completion.sh`
+- Triggers: When Ralph Loop tries to stop
+- Logic:
+  - Check all tasks in task-queue.yaml are `status: done`
+  - If YES → Archive sprint, create validation marker, BLOCK
+  - If NO → Continue (ralph-continue.sh handles pending tasks)
+
+**2. Validation Enforcement Hook (PreToolUse Task)**
+- File: `.claude/hooks/ralph-validation-enforcer.sh`
+- Triggers: Before spawning subagent (Task tool)
+- Logic:
+  - Check if `.bmad/sprint-validation-pending` exists
+  - If YES → BLOCK with message "Run /validate-sprint"
+  - If NO → Continue
+
+**3. Validation Cleanup Hook (PostToolUse Write)**
+- File: `.claude/hooks/ralph-validation-cleanup.sh`
+- Triggers: After writing files (Write tool)
+- Logic:
+  - Check if file written is `task-queue.yaml`
+  - Check if `.bmad/sprint-validation-pending` exists
+  - If BOTH → Remove marker, unlock Ralph Loop
+
+---
+
+### Archived Sprint Structure
+
+After each sprint completion, data is archived to:
 
 ```
-after ALL tasks in task-queue.yaml are DONE:
-  1. Read current sprint number from task-queue.yaml
-  2. current_sprint = sprint + 1
-
-  3. Read docs/sprint-plan-*.md
-  4. Find stories assigned to Sprint {current_sprint}
-
-  5. If no stories for next sprint:
-     → PROJECT COMPLETE
-
-  6. Otherwise:
-     → Decompose stories into atomic tasks
-     → Write new task-queue.yaml (sprint: current_sprint)
-     → Continue loop with new tasks
+.bmad/history/sprint-1/
+├── task-queue.yaml       # Original task queue
+├── sprint-review.md      # Generated report (stories, commits, learnings)
+├── quality-report.json   # Results from typecheck/lint/test/coverage
+└── commits.log           # List of git commit hashes
 ```
 
-### Implementation
+This preserves full history across all sprints.
 
-After all tasks done, check for next sprint:
+---
 
-```bash
-# 1. Get current sprint number
-current_sprint=$(yq '.sprint' .bmad/task-queue.yaml)
-next_sprint=$((current_sprint + 1))
+### User Flow
 
-# 2. Find sprint plan
-sprint_plan=$(ls docs/sprint-plan-*.md | head -1)
+**Sprint 1 → Sprint 2 transition:**
 
-# 3. Check if next sprint has stories
-# Look for "| Sprint ${next_sprint} |" in the stories table
-```
+1. Ralph completes last task of Sprint 1
+2. Stop hook blocks Ralph with message:
+   ```
+   🏁 SPRINT 1 COMPLETED
+   ✅ All tasks completed
+   📦 Archived to: .bmad/history/sprint-1/
+   🔍 Quality gates: PASSED
+   🌐 Browser opened for manual validation
 
-**If next sprint has stories:**
-1. Extract stories for Sprint N+1 from sprint-plan.md
-2. Decompose each story into atomic tasks (30-60 min)
-3. Write new `.bmad/task-queue.yaml` with sprint: N+1
-4. Continue Ralph Loop
+   📋 NEXT STEP: Run /validate-sprint
+   ```
+3. User tests application in browser
+4. User runs `/validate-sprint`
+5. validate-sprint generates task-queue.yaml for Sprint 2
+6. PostToolUse hook removes validation marker
+7. Ralph Loop auto-resumes with Sprint 2 tasks
 
-**If no more sprints:**
-```xml
-<promise>PROJECT_COMPLETE</promise>
-<summary>
-All sprints completed!
-- Sprints: 5/5 done
-- Total stories: 42
-- Total tasks: 287
-- Total commits: 287
-</summary>
-```
+---
 
-### Task Decomposition (inline)
+### Key Benefits
 
-When generating task-queue for next sprint, follow same rules:
+✅ **Enforcement over instructions** — Hooks physically block Ralph until validation completes
+✅ **Manual validation checkpoint** — User tests before next sprint
+✅ **Full sprint history** — All sprints archived with reviews and quality reports
+✅ **Zero context loss** — Ralph picks up exactly where it left off
+✅ **Quality gates** — typecheck/lint/test must pass before archiving
 
-| Task Type | Estimated | Example |
-|-----------|-----------|---------|
-| api | 30 min | Add endpoint to openapi.yaml |
-| backend | 30-45 min | Implement controller/service |
-| frontend | 30-45 min | Create component/hook |
-| test | 45-60 min | Write integration tests |
-
-**Dependency order:** api → backend → frontend → test
+---
 
 ## Output Format
 
-**Sprint Complete, Continuing:**
+**Sprint Complete (Blocked):**
 ```xml
-<promise>SPRINT_COMPLETE</promise>
+<promise>SPRINT_BLOCKED_FOR_VALIDATION</promise>
 <summary>
 Sprint 1 completed!
 - Stories: 8/8 done
 - Tasks: 67/67 done
+- Archived to: .bmad/history/sprint-1/
 </summary>
 <next_action>
-Generating task-queue for Sprint 2...
-Found 6 stories, creating 48 tasks.
-Continuing automatically.
+Run /validate-sprint to continue to Sprint 2
 </next_action>
 ```
 
