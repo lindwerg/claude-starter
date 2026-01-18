@@ -66,16 +66,8 @@ async function main() {
   const visChoice = await question('Choose [1/2]: ');
   const visibility = visChoice === '2' ? '--public' : '--private';
 
-  // 4. Parent directory
-  let parentDir = await question(`📂 Parent directory [~/Desktop]: `);
-  parentDir = parentDir || path.join(os.homedir(), 'Desktop');
-  parentDir = parentDir.replace(/^~/, os.homedir());
-
-  if (!fs.existsSync(parentDir)) {
-    console.log(red(`❌ Directory does not exist: ${parentDir}`));
-    process.exit(1);
-  }
-
+  // 4. Project path (always ~/Desktop or current dir if specified)
+  const parentDir = path.join(os.homedir(), 'Desktop');
   const projectPath = path.join(parentDir, projectName);
   if (fs.existsSync(projectPath)) {
     console.log(red(`❌ Directory already exists: ${projectPath}`));
