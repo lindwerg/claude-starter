@@ -177,6 +177,19 @@ Before running Ralph Loop:
 
 ## Task Queue Workflow
 
+### 0. Create Progress Marker
+
+Before starting the loop, create marker file for auto-resume:
+
+```bash
+mkdir -p .bmad
+echo "$(date -Iseconds)" > .bmad/ralph-in-progress
+```
+
+This file enables:
+- Context warning hook to show Ralph-specific messages
+- SessionStart hook to prompt resume after /clear
+
 ### 1. Load Queue
 
 ```bash
@@ -354,6 +367,16 @@ Loop continues automatically to next task.
 - All tasks done → `<promise>COMPLETE</promise>`
 - Task blocked → `<promise>BLOCKED</promise>`
 - Max iterations reached → `<promise>LIMIT_REACHED</promise>`
+
+### 8. Cleanup on Complete
+
+When loop finishes (COMPLETE, BLOCKED, or LIMIT_REACHED), remove progress marker:
+
+```bash
+rm -f .bmad/ralph-in-progress
+```
+
+This prevents false "Resume Ralph" prompts on next session start.
 
 ## Retry Logic
 
