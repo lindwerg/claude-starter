@@ -13,6 +13,11 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/backpressure-gate.sh",
             "timeout": 30000
+          },
+          {
+            "type": "command",
+            "command": "tdd-guard",
+            "timeout": 10000
           }
         ]
       },
@@ -28,6 +33,11 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/backpressure-gate.sh",
             "timeout": 30000
+          },
+          {
+            "type": "command",
+            "command": "tdd-guard",
+            "timeout": 10000
           },
           {
             "type": "command",
@@ -78,6 +88,11 @@
           },
           {
             "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/quality-check.js",
+            "timeout": 15000
+          },
+          {
+            "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/task-verification.sh",
             "timeout": 60000
           },
@@ -94,6 +109,11 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/typescript-preflight.sh",
             "timeout": 40000
+          },
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/quality-check.js",
+            "timeout": 15000
           },
           {
             "type": "command",
@@ -133,6 +153,10 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/session-start-continuity.sh"
+          },
+          {
+            "type": "command",
+            "command": "tdd-guard"
           }
         ]
       },
@@ -155,6 +179,10 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-ralph.sh"
+          },
+          {
+            "type": "command",
+            "command": "tdd-guard"
           }
         ]
       }

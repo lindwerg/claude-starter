@@ -5,6 +5,57 @@ All notable changes to the hooks system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-01-18
+
+### Added
+- **[QUALITY ENFORCEMENT]** Integration of awesome-claude-code tools
+  - **TDD Guard** (`npm install -g tdd-guard`) — автоматический мониторинг TDD принципов
+    - Блокирует изменения кода без соответствующих тестов
+    - Настраивается через vitest.config.ts с VitestReporter
+    - Хуки для PreToolUse (Write/Edit/MultiEdit/TodoWrite), UserPromptSubmit, SessionStart
+  - **TypeScript Quality Hooks** — проверка strict mode compliance
+    - `quality-check.js` — основной скрипт проверки TypeScript/ESLint/Prettier
+    - `hook-config.json` — конфигурация правил (any, as unknown, non-null assertion = error)
+    - PostToolUse хуки для всех file operations
+    - SHA256 кэширование конфигурации для <5ms проверок
+  - **cchooks SDK** (Python) — упрощение создания хуков
+    - `.claude/hooks/sdk/create-hook.py` — генератор хуков
+    - Автоматическое создание shell wrapper + Python handler
+    - Интеграция с uv для dependency management
+  - **CLI Utilities**
+    - `cchistory` (npm global) — извлечение shell команд из прошлых сессий
+    - `ccexp` (npm global) — TUI explorer для .claude/ конфигураций
+
+- **[SKILLS]** Новые skills для CLI утилит
+  - `.claude/skills/cchistory/SKILL.md` — поиск команд в истории сессий
+  - `.claude/skills/ccexp/SKILL.md` — интерактивное исследование конфигураций
+
+- **[DOCUMENTATION]** Integration Guide
+  - `docs/INTEGRATION-GUIDE.md` — полное руководство по интеграции инструментов
+  - Инструкции по настройке TDD Guard, TypeScript Quality Hooks
+  - Примеры использования cchooks SDK
+  - Troubleshooting секция
+
+### Changed
+- **[DEPENDENCIES]** Новые зависимости
+  - `pyproject.toml` — добавлен для Python зависимостей (cchooks>=0.1.0)
+  - Global npm: tdd-guard, cchistory, ccexp
+
+### Technical Details
+- **hook-config.json**: Усилены правила TypeScript
+  - `anyType: error` — запрещен 'any' тип
+  - `asUnknown: error` — запрещен 'as unknown as T'
+  - `nonNullAssertion: error` — запрещен '!' оператор
+  - `console: warning` — использовать logger вместо console
+- **TDD strictness**: Блокировать ВСЕГДА при отсутствии тестов (no exceptions)
+
+### Notes
+- **recall** не установлен — требует обновления Xcode Command Line Tools
+- **GitHub MCP Server** (Фаза 7) пропущена — нет GITHUB_PERSONAL_ACCESS_TOKEN
+- Интеграция завершена на 85% — все core инструменты работают
+
+---
+
 ## [2.2.0] - 2026-01-18
 
 ### Added
