@@ -35,7 +35,13 @@ Most starter kits give you **files**. Provide gives you a **development pipeline
 
 ## Quick Start
 
-### 1. Install (30 seconds)
+### 1. Create Project Folder
+
+```bash
+mkdir my-app && cd my-app
+```
+
+### 2. Install & Setup (One Command!)
 
 **macOS / Linux:**
 ```bash
@@ -47,21 +53,22 @@ curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/instal
 irm https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.ps1 | iex
 ```
 
-### 2. Create Your First Project
-
-```bash
-mkdir my-app && cd my-app
-claude
-```
+**What happens:**
+- Installs Claude Code config (`~/.claude/skills`, `rules`, `hooks`)
+- Creates `backend/` (VSA), `frontend/` (FSD), `docs/`
+- Sets up `package.json`, `tsconfig.json`, `docker-compose.yml`
+- Runs `pnpm install`
+- Initializes git repository
 
 ### 3. Start Building
 
 ```bash
-/init-project      # Creates FSD/VSA project structure
-/ralph-loop        # Starts autonomous development
+claude                # Launch Claude Code
+/product-brief        # Define what you're building
+/ralph-loop           # Start autonomous development
 ```
 
-**That's it!** Claude will now autonomously implement your features.
+**That's it!** Full project structure + dependencies + Claude workflow in one command.
 
 ---
 
