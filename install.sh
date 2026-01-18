@@ -25,11 +25,45 @@ TEMP_DIR=""
 PROJECT_DIR="$(pwd)"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
 
-# Ports
+# Default ports (will be overwritten if busy)
 POSTGRES_PORT=5433
 REDIS_PORT=6380
 BACKEND_PORT=3001
 FRONTEND_PORT=5173
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FIND FREE PORT
+# ═══════════════════════════════════════════════════════════════════════════
+
+find_free_port() {
+  local port=$1
+  local max_port=$((port + 100))
+
+  while [ $port -lt $max_port ]; do
+    if ! lsof -i :$port >/dev/null 2>&1 && ! nc -z localhost $port 2>/dev/null; then
+      echo $port
+      return 0
+    fi
+    port=$((port + 1))
+  done
+
+  # Fallback to original port
+  echo $1
+}
+
+assign_free_ports() {
+  log_step "Поиск свободных портов..."
+
+  POSTGRES_PORT=$(find_free_port 5433)
+  REDIS_PORT=$(find_free_port 6380)
+  BACKEND_PORT=$(find_free_port 3001)
+  FRONTEND_PORT=$(find_free_port 5173)
+
+  log_info "PostgreSQL: $POSTGRES_PORT"
+  log_info "Redis: $REDIS_PORT"
+  log_info "Backend: $BACKEND_PORT"
+  log_info "Frontend: $FRONTEND_PORT"
+}
 
 # Colors
 RED='\033[0;31m'
@@ -792,7 +826,7 @@ create_frontend_files() {
   log_step "Создаю frontend файлы..."
 
   # vite.config.ts
-  cat > "$PROJECT_DIR/frontend/vite.config.ts" << 'EOF'
+  cat > "$PROJECT_DIR/frontend/vite.config.ts" << EOF
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -805,7 +839,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: ${FRONTEND_PORT},
   },
 });
 EOF
@@ -1214,6 +1248,7 @@ print_success() {
 main() {
   print_banner
   check_prerequisites
+  assign_free_ports
   backup_existing
   clone_repo
   install_claude_config
