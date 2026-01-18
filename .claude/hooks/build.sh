@@ -36,7 +36,7 @@ npx esbuild src/types.ts \
   --external:fs \
   --external:path \
   --external:child_process \
-  --external:yaml
+  
 
 # Build each hook with types bundled
 for hook in "${HOOKS[@]}"; do
@@ -50,7 +50,7 @@ for hook in "${HOOKS[@]}"; do
       --external:fs \
       --external:path \
       --external:child_process \
-      --external:yaml
+      
   fi
 done
 
