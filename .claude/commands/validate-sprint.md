@@ -50,11 +50,50 @@ ls backend/src frontend/src backend/prisma/schema.prisma
 
 **Если валидация провалена** → Сообщить ошибки и ОСТАНОВИТЬСЯ.
 
-### Step 4: Извлечь Sprint 1 stories
+### Step 4: Query Context7 for Best Practices
+
+**BEFORE декомпозиции stories — запроси актуальные best practices:**
+
+1. **Agile task decomposition:**
+   ```
+   mcp__context7__resolve-library-id: "agile scrum"
+   mcp__context7__query-docs: "user story decomposition into atomic tasks best practices"
+   ```
+
+2. **Technology-specific workflows** (из architecture):
+
+   Для React/TypeScript projects:
+   ```
+   mcp__context7__resolve-library-id: "react"
+   mcp__context7__query-docs: "React component development workflow step by step"
+
+   mcp__context7__resolve-library-id: "prisma"
+   mcp__context7__query-docs: "Prisma schema development and migration workflow"
+
+   mcp__context7__resolve-library-id: "vitest"
+   mcp__context7__query-docs: "Vitest integration testing workflow for API and components"
+   ```
+
+3. **Task estimation:**
+   ```
+   mcp__context7__query-docs: "software task estimation best practices for 30-60 minute tasks"
+   ```
+
+**Why:** Task decomposition должна соответствовать РЕАЛЬНОМУ dev workflow библиотек. Например:
+- Prisma task: schema → migrate → generate → implement
+- React component: interface → component → test → integration
+- API endpoint: OpenAPI → controller → service → repository → test
+
+**Include in task-queue:**
+- Actual workflow steps from library docs
+- Version-specific gotchas
+- Dependency order validated against docs
+
+### Step 5: Извлечь Sprint 1 stories
 
 Из sprint-plan найти все stories назначенные на Sprint 1.
 
-### Step 5: Декомпозировать в atomic tasks
+### Step 6: Декомпозировать в atomic tasks
 
 Для КАЖДОЙ story в Sprint 1 создать atomic tasks:
 
@@ -80,7 +119,7 @@ ls backend/src frontend/src backend/prisma/schema.prisma
 4. Frontend
 5. Tests последними
 
-### Step 6: Создать task-queue.yaml
+### Step 7: Создать task-queue.yaml
 
 Записать `.bmad/task-queue.yaml`:
 
@@ -116,7 +155,7 @@ tasks:
     max_retries: 3
 ```
 
-### Step 7: Финальная проверка
+### Step 8: Финальная проверка
 
 ```bash
 cat .bmad/task-queue.yaml | yq '.summary'

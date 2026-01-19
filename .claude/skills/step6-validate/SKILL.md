@@ -93,6 +93,88 @@ quality_gates:
 | "Unknown story type" | Используй: api, backend, frontend, test, devops |
 | "P0 depends on P1" | Поменяй приоритеты |
 
+---
+
+## PRE-FLIGHT: Проверка предыдущих документов
+
+**BEFORE валидации — убедись что документы созданы:**
+
+### Шаг 1: Проверить Sprint Plan
+
+```bash
+ls -t docs/sprint-plan-*.md | head -1
+```
+
+**Если файл НЕ найден:**
+```
+❌ Sprint Plan не найден!
+
+Сначала создай sprint plan:
+/step5-sprint
+```
+STOP — валидация требует sprint plan.
+
+### Шаг 2: Проверить Architecture (опционально)
+
+```bash
+ls -t docs/architecture-*.md | head -1
+```
+
+**Примечание:** Если Architecture существует, /validate-sprint запретит INF-* stories.
+
+---
+
+## Execution
+
+### Шаг 1: Вызови BMAD команду /validate-sprint
+
+**НЕМЕДЛЕННО вызови команду:**
+
+```bash
+/validate-sprint
+```
+
+**НЕТ параметров**, **НЕТ YAML файлов**, **НЕТ вопросов пользователю**.
+
+/validate-sprint — fully autonomous command:
+1. Находит sprint-plan.md
+2. Валидирует stories (NO INF-* if architecture exists!)
+3. Декомпозирует Sprint 1 stories на atomic tasks
+4. Генерирует `.bmad/task-queue.yaml`
+5. Генерирует `.bmad/sprint-status.yaml`
+6. Обновляет workflow status
+
+### Шаг 2: Проверь результат
+
+После выполнения /validate-sprint проверь:
+
+```bash
+ls .bmad/task-queue.yaml .bmad/sprint-status.yaml
+```
+
+**Если файлы НЕ созданы:**
+```
+❌ Валидация провалилась!
+
+Проверь ошибки в выводе /validate-sprint.
+Возможно нужно исправить sprint-plan.md.
+```
+
+### Шаг 3: Сообщи пользователю
+
+```
+✓ Валидация завершена!
+
+Документы:
+- Task Queue: .bmad/task-queue.yaml (X tasks для Ralph)
+- Sprint Status: .bmad/sprint-status.yaml
+
+Следующий шаг:
+/step7-build  # Запуск Ralph Loop
+```
+
+---
+
 ## Следующий шаг
 
 После валидации запускай автономную разработку:
