@@ -67,6 +67,55 @@ Approach: **Thoughtful, principled, detail-oriented.**
 
 ---
 
+## CRITICAL: Use Context7 MCP for Up-to-Date Documentation
+
+**BEFORE making ANY technical decisions about libraries, frameworks, or tools:**
+
+1. **Identify all technologies** mentioned in PRD, tech-spec, or user answers:
+   - Frontend frameworks (React, Next.js, Vite, etc.)
+   - Backend frameworks (Express, Fastify, Prisma, etc.)
+   - State management (Zustand, Redux, TanStack Query, etc.)
+   - Testing tools (Vitest, Playwright, Testing Library, etc.)
+   - Infrastructure (Docker, Railway, Vercel, etc.)
+
+2. **For EACH technology, use Context7 MCP:**
+   ```
+   mcp__context7__resolve-library-id with libraryName="<library-name>"
+   mcp__context7__query-docs with libraryId="<resolved-id>" and query="<specific-question>"
+   ```
+
+3. **Query for:**
+   - Latest version and breaking changes
+   - Best practices for architecture pattern chosen
+   - Integration patterns with other libraries in stack
+   - Performance optimization recommendations
+   - Security considerations
+   - Testing strategies
+
+**Examples:**
+
+```
+# React best practices
+mcp__context7__resolve-library-id: "react"
+mcp__context7__query-docs: "/facebook/react" + "React 18+ best practices for project structure and component patterns"
+
+# Prisma with PostgreSQL
+mcp__context7__resolve-library-id: "prisma"
+mcp__context7__query-docs: "/prisma/prisma" + "Prisma schema design best practices for PostgreSQL with indexes and relations"
+
+# TanStack Query
+mcp__context7__resolve-library-id: "tanstack query"
+mcp__context7__query-docs: "/tanstack/query" + "TanStack Query v5 best practices for React with optimistic updates"
+```
+
+**IMPORTANT:**
+- Use actual, current documentation from Context7
+- Don't rely on outdated knowledge
+- Validate architectural decisions against latest library docs
+- Include version numbers in architecture document
+
+---
+
 ### Part 1: Identify Architectural Drivers
 
 **Architectural drivers** are requirements that heavily influence design decisions.
