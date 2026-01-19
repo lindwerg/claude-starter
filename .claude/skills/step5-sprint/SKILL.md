@@ -126,14 +126,83 @@ Sprint planning в основном читает из PRD и Architecture док
 
 ### Шаг 1: Собери уточняющие параметры
 
-Спроси пользователя:
+**ОБЯЗАТЕЛЬНО используй AskUserQuestion tool** для интерактивного сбора ответов:
 
-1. **Team Velocity**: "Сколько story points команда может выполнить за 2-недельный спринт? (15-20 обычно)"
-2. **Sprint Duration**: "Длительность спринта в неделях? (обычно 2 недели)"
-3. **Sprint Goal**: "Цель первого спринта? (например, 'MVP с core chatbot functionality')"
-4. **Priority Adjustments**: "Нужно изменить приоритеты каких-либо epic? (если нет, оставь пустым)"
-5. **External Dependencies**: "Есть внешние зависимости? (например, 'Zendesk API sandbox access needed by Week 2')"
-6. **Sprint Start Date**: "Когда начнётся Sprint 1? (YYYY-MM-DD)"
+```
+AskUserQuestion with questions:
+  1. Team Velocity:
+     question: "Сколько story points команда может выполнить за 2-недельный спринт?"
+     header: "Velocity"
+     options:
+       - label: "15 SP (соло, 0.5 FTE)"
+         description: "Один разработчик part-time"
+       - label: "30 SP (соло, full-time)"
+         description: "Один разработчик full-time"
+       - label: "50 SP (команда 2-3)"
+         description: "Небольшая команда"
+       - label: "80+ SP (команда 4+)"
+         description: "Полноценная команда"
+
+  2. Sprint Duration:
+     question: "Длительность спринта?"
+     header: "Duration"
+     options:
+       - label: "1 неделя"
+         description: "Быстрые итерации"
+       - label: "2 недели (Recommended)"
+         description: "Стандартный Scrum sprint"
+       - label: "3 недели"
+         description: "Для больших команд"
+
+  3. Sprint Goal:
+     question: "Цель первого спринта?"
+     header: "Goal"
+     options:
+       - label: "MVP core functionality"
+         description: "Базовые функции для первых пользователей"
+       - label: "Infrastructure + auth"
+         description: "Фундамент системы"
+       - label: "Key feature complete"
+         description: "Одна ключевая фича end-to-end"
+       - label: "Production ready"
+         description: "Готовность к деплою в prod"
+
+  4. Priority Adjustments:
+     question: "Нужны корректировки приоритетов epic?"
+     header: "Priorities"
+     options:
+       - label: "Нет, всё хорошо"
+         description: "Приоритеты из PRD подходят"
+       - label: "Да, нужны изменения"
+         description: "Опиши какие epic нужно поднять/опустить"
+
+  5. External Dependencies:
+     question: "Есть внешние зависимости или блокеры?"
+     header: "Dependencies"
+     options:
+       - label: "Нет зависимостей"
+         description: "Команда полностью автономна"
+       - label: "Да, есть зависимости"
+         description: "Опиши (API access, hardware, third-party, etc.)"
+
+  6. Sprint Start Date:
+     question: "Когда начнётся Sprint 1?"
+     header: "Start Date"
+     options:
+       - label: "Сегодня"
+         description: "Начинаем немедленно"
+       - label: "Следующий понедельник"
+         description: "Начало рабочей недели"
+       - label: "Через 2 недели"
+         description: "Нужна подготовка"
+       - label: "Конкретная дата"
+         description: "Укажи YYYY-MM-DD"
+```
+
+**После получения ответов через AskUserQuestion:**
+- Сохрани ответы в переменные
+- Если выбрано "Other" для любого вопроса, используй текст от пользователя
+- Для Sprint Start Date: если "Конкретная дата" → попроси указать в формате YYYY-MM-DD
 
 ### Шаг 2: Создай YAML файл с ответами
 
