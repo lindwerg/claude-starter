@@ -70,6 +70,46 @@ ls -la backend/src/ frontend/src/ prisma/schema.prisma docker-compose.yml 2>/dev
 
 ---
 
+## CRITICAL: Use Context7 MCP for Agile Best Practices
+
+**BEFORE breaking down epics and estimating stories:**
+
+1. **Query for sprint planning best practices:**
+   ```
+   mcp__context7__resolve-library-id with libraryName="scrum guide"
+   mcp__context7__query-docs: "story decomposition best practices and estimation techniques"
+   ```
+
+2. **Query for task breakdown patterns specific to your stack:**
+
+   For React/Node.js projects:
+   ```
+   mcp__context7__resolve-library-id: "react"
+   mcp__context7__query-docs: "React component development workflow and testing strategy"
+
+   mcp__context7__resolve-library-id: "prisma"
+   mcp__context7__query-docs: "Prisma migration workflow and schema development best practices"
+   ```
+
+3. **Query for CI/CD and deployment patterns:**
+   ```
+   mcp__context7__query-docs: "Docker development workflow and CI/CD pipeline setup"
+   mcp__context7__query-docs: "Railway deployment best practices and database migrations"
+   ```
+
+**Why this matters:**
+- Story decomposition aligned with actual development workflow
+- Accurate task estimates based on real library patterns
+- Sprint goals achievable with current tooling
+- Dependency chains match real integration requirements
+
+**Include in sprint plan:**
+- Version numbers for all technologies
+- Links to relevant documentation sections
+- Known gotchas or breaking changes
+
+---
+
 ## Sprint Planning Process
 
 **IF SKIP_INTERVIEW is true (batch mode):**

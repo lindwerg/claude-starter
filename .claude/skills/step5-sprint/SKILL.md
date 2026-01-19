@@ -155,32 +155,29 @@ sprint_start_date: "{ответ_дата_старта}"
 
 **Используй Write tool для создания этого файла.**
 
-### Шаг 3: Вызови variable-bridge.sh
+### Шаг 3: Вызови BMAD команду /sprint-planning
+
+Теперь просто вызови Skill для генерации документа:
 
 ```bash
-bash ~/.claude/skills/bmad/bmad-v6/utils/variable-bridge.sh \
-  sprint-planning \
-  /tmp/step5-answers.yaml
+/sprint-planning
 ```
 
 **Что происходит:**
-1. variable-bridge.sh загружает YAML
-2. Экспортирует 6 переменных как BMAD_*
-3. Устанавливает BMAD_BATCH_MODE=true
-4. Вызывает команду /sprint-planning
+1. Команда /sprint-planning проверяет существование `/tmp/step5-answers.yaml`
+2. Находит файл → переходит в batch mode
+3. Читает YAML напрямую через Read tool (все 6 переменных)
+4. Читает Architecture и PRD документы для извлечения epics, features
+5. Загружает template из `.claude/skills/bmad/bmad-v6/templates/sprint-plan.md`
+6. Подставляет переменные в template
+7. Генерирует `docs/sprint-plan-{project}-{date}.md`
+8. Создаёт `docs/sprint-status.yaml` для Ralph tracking
+9. Обновляет workflow status
 
-**Результат:**
-- Команда sprint-planning:
-  - Загружает PRD (`docs/prd-*.md`)
-  - Загружает Architecture (`docs/architecture-*.md`)
-  - Извлекает epics, FRs, requirements
-  - Разбивает epics на stories
-  - Декомпозирует stories на atomic tasks
-  - Использует BMAD_* переменные для team capacity и sprint goals
-  - Генерирует `docs/sprint-plan-{project}-{date}.md`
-  - **Создаёт `.bmad/task-queue.yaml` для Ralph Loop**
-  - Обновляет `.bmad/sprint-status.yaml`
-  - Обновляет workflow status
+**Преимущества:**
+- ✅ YAML читается напрямую (не зависит от environment variables)
+- ✅ Работает после /compact (YAML файл сохраняется)
+- ✅ Простой и надёжный подход
 
 ### Шаг 4: Сообщи пользователю
 
