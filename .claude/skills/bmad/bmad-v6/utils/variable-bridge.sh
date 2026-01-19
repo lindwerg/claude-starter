@@ -1,6 +1,6 @@
 #!/bin/bash
 # variable-bridge.sh - Bridge between step-* skills and BMAD commands
-# Version: 1.0.0
+# Version: 2.0.0 - Uses yq for proper YAML parsing
 # Purpose: Load answers from YAML and pass to BMAD commands as environment variables
 
 set -euo pipefail
@@ -45,32 +45,74 @@ elif [ -f "$HOME/.claude/skills/bmad/bmad-v6/scripts/load-config.sh" ]; then
 fi
 
 # Export answers as environment variables
-# Format: YAML key (snake_case) → ENV var (BMAD_UPPER_SNAKE_CASE)
 echo "[variable-bridge] Loading answers from: $ANSWERS_FILE"
 
-# Parse YAML and export variables
-# Note: This is a simple parser - for production consider using yq
-while IFS=': ' read -r key value; do
-    # Skip empty lines and comments
-    [[ -z "$key" ]] && continue
-    [[ "$key" =~ ^# ]] && continue
+# Check if yq is available (proper YAML parser)
+if command -v yq &> /dev/null; then
+    echo "[variable-bridge] Using yq for YAML parsing" >&2
 
-    # Skip metadata fields
-    [[ "$key" == "collected_at" ]] && continue
-    [[ "$key" == "collected_by" ]] && continue
+    # Get all top-level keys
+    keys=$(yq eval 'keys | .[]' "$ANSWERS_FILE")
 
-    # Convert YAML key to ENV var
-    # executive_summary → EXECUTIVE_SUMMARY
-    # problem-statement → PROBLEM_STATEMENT
-    env_key=$(echo "$key" | tr '[:lower:]' '[:upper:]' | tr '-' '_' | tr ' ' '_')
+    # Export each key as BMAD_* variable
+    while IFS= read -r key; do
+        # Skip metadata fields
+        [[ "$key" == "collected_at" ]] && continue
+        [[ "$key" == "collected_by" ]] && continue
 
-    # Remove leading/trailing whitespace and quotes from value
-    clean_value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/^"//;s/"$//')
+        # Get value (handles multiline, preserves formatting)
+        value=$(yq eval ".${key}" "$ANSWERS_FILE")
 
-    # Export as BMAD_* variable
-    export "BMAD_${env_key}=${clean_value}"
-    echo "[variable-bridge] Exported: BMAD_${env_key}" >&2
-done < "$ANSWERS_FILE"
+        # Convert key to ENV var format
+        env_key=$(echo "$key" | tr '[:lower:]' '[:upper:]' | tr '-' '_' | tr ' ' '_')
+
+        # Export as BMAD_* variable
+        export "BMAD_${env_key}=${value}"
+        echo "[variable-bridge] Exported: BMAD_${env_key} (${#value} chars)" >&2
+    done <<< "$keys"
+
+else
+    # Fallback: Python YAML parser (more reliable than bash)
+    echo "[variable-bridge] Using python for YAML parsing" >&2
+
+    # Use eval to export variables in parent shell (not subshell)
+    eval "$(python3 -c "
+import yaml
+import base64
+import sys
+
+with open('$ANSWERS_FILE', 'r', encoding='utf-8') as f:
+    data = yaml.safe_load(f)
+
+if not isinstance(data, dict):
+    print('Error: YAML must be a dictionary', file=sys.stderr)
+    sys.exit(1)
+
+for key, value in data.items():
+    # Skip metadata
+    if key in ['collected_at', 'collected_by']:
+        continue
+
+    # Convert key to ENV var format
+    env_key = key.upper().replace('-', '_').replace(' ', '_')
+
+    # Convert value to string (handles multiline)
+    if isinstance(value, (list, dict)):
+        import json
+        str_value = json.dumps(value, ensure_ascii=False)
+    else:
+        str_value = str(value)
+
+    # Base64 encode to safely pass through bash (handles newlines, quotes, etc)
+    b64_value = base64.b64encode(str_value.encode('utf-8')).decode('ascii')
+
+    # Output export statement that will be eval'd
+    print(f'export BMAD_{env_key}=\\$(echo {b64_value} | base64 -d)')
+
+    # Log to stderr (won't be eval'd)
+    sys.stderr.write(f'[variable-bridge] Exported: BMAD_{env_key} ({len(str_value)} chars)\\n')
+")"
+fi
 
 # Set batch mode flag
 export BMAD_BATCH_MODE="true"
@@ -78,13 +120,8 @@ export BMAD_ANSWERS_FILE="$ANSWERS_FILE"
 
 echo "[variable-bridge] Calling BMAD command: $COMMAND"
 
-# Call BMAD command
-# Note: The command .md file contains instructions for Claude
-# This bridge makes variables available in the environment
-# The actual execution happens in Claude Code with these env vars
-
 # Create result marker
-RESULT_FILE="/tmp/bmad-result-$$yaml"
+RESULT_FILE="/tmp/bmad-result-$$.yaml"
 cat > "$RESULT_FILE" <<EOF
 command: $COMMAND
 answers_file: $ANSWERS_FILE
