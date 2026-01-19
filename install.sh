@@ -192,22 +192,20 @@ clone_repo() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 3. INSTALL CLAUDE CONFIG (GLOBAL)
+# 3. INSTALL CLAUDE CONFIG (GLOBAL - minimal base config)
 # ═══════════════════════════════════════════════════════════════════════════
 
 install_claude_config() {
-  log_step "Устанавливаю конфигурацию Claude Code (~/.claude)..."
+  log_step "Устанавливаю базовую конфигурацию Claude Code (~/.claude)..."
 
-  mkdir -p "$CLAUDE_DIR"/{skills,rules,hooks,commands,agents,templates,scripts,orchestrator}
+  # Install only minimal global config (rules + base settings)
+  mkdir -p "$CLAUDE_DIR/rules"
 
-  local components=("skills" "rules" "hooks" "commands" "agents" "orchestrator" "scripts")
-  for component in "${components[@]}"; do
-    local src="$TEMP_DIR/claude-starter/.claude/$component"
-    local dst="$CLAUDE_DIR/$component"
-    if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
-      cp -r "$src/"* "$dst/" 2>/dev/null || true
-    fi
-  done
+  # Copy rules (shared across all projects)
+  local src="$TEMP_DIR/claude-starter/.claude/rules"
+  if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
+    cp -r "$src/"* "$CLAUDE_DIR/rules/" 2>/dev/null || true
+  fi
 
   # Make scripts executable
   chmod +x "$CLAUDE_DIR/hooks/"*.sh 2>/dev/null || true
@@ -1178,21 +1176,35 @@ EOF
 # ═══════════════════════════════════════════════════════════════════════════
 
 setup_project_claude() {
-  log_step "Настраиваю .claude/ для проекта..."
+  log_step "Устанавливаю полную конфигурацию Claude в проект..."
 
-  # Copy hooks to project
-  if [ -d "$CLAUDE_DIR/hooks" ]; then
-    cp -r "$CLAUDE_DIR/hooks/"* "$PROJECT_DIR/.claude/hooks/" 2>/dev/null || true
-    chmod +x "$PROJECT_DIR/.claude/hooks/"*.sh 2>/dev/null || true
-    # Install hooks dependencies
-    if [ -f "$PROJECT_DIR/.claude/hooks/package.json" ]; then
-      (cd "$PROJECT_DIR/.claude/hooks" && pnpm install --ignore-workspace >/dev/null 2>&1) || true
+  # Create local .claude structure
+  mkdir -p "$PROJECT_DIR/.claude"/{skills,commands,agents,hooks,templates,scripts}
+
+  # Copy EVERYTHING from repo to project (full local installation)
+  local components=("skills" "commands" "agents" "hooks" "templates" "scripts")
+  for component in "${components[@]}"; do
+    local src="$TEMP_DIR/claude-starter/.claude/$component"
+    local dst="$PROJECT_DIR/.claude/$component"
+    if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
+      cp -r "$src/"* "$dst/" 2>/dev/null || true
     fi
+  done
+
+  # Make scripts executable
+  chmod +x "$PROJECT_DIR/.claude/hooks/"*.sh 2>/dev/null || true
+  chmod +x "$PROJECT_DIR/.claude/scripts/"*.sh 2>/dev/null || true
+  find "$PROJECT_DIR/.claude/skills" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+
+  # Install hooks dependencies
+  if [ -f "$PROJECT_DIR/.claude/hooks/package.json" ]; then
+    log_step "Устанавливаю зависимости для хуков..."
+    (cd "$PROJECT_DIR/.claude/hooks" && pnpm install --ignore-workspace >/dev/null 2>&1) || true
   fi
 
-  # Copy settings.json
-  if [ -f "$CLAUDE_DIR/settings.json" ]; then
-    cp "$CLAUDE_DIR/settings.json" "$PROJECT_DIR/.claude/"
+  # Copy settings.json from repo (not from global ~/.claude)
+  if [ -f "$TEMP_DIR/claude-starter/.claude/settings.json" ]; then
+    cp "$TEMP_DIR/claude-starter/.claude/settings.json" "$PROJECT_DIR/.claude/"
   fi
 
   # Project CLAUDE.md
