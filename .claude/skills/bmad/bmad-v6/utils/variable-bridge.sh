@@ -22,15 +22,25 @@ if [ ! -f "$ANSWERS_FILE" ]; then
     exit 1
 fi
 
-# Validate command file exists
-COMMAND_FILE="$PROJECT_DIR/.claude/commands/${COMMAND}.md"
+# Validate command file exists (check global location)
+COMMAND_FILE="$HOME/.claude/commands/${COMMAND}.md"
 if [ ! -f "$COMMAND_FILE" ]; then
-    echo "Error: Command file not found: $COMMAND_FILE" >&2
-    exit 1
+    # Fallback: try project-local commands (for custom project commands)
+    COMMAND_FILE="$PROJECT_DIR/.claude/commands/${COMMAND}.md"
+    if [ ! -f "$COMMAND_FILE" ]; then
+        echo "Error: Command file not found in ~/.claude/commands/ or project .claude/commands/" >&2
+        echo "       Looking for: ${COMMAND}.md" >&2
+        exit 1
+    fi
 fi
 
-# Load BMAD config if available
-if [ -f "$PROJECT_DIR/.claude/skills/bmad/bmad-v6/scripts/load-config.sh" ]; then
+echo "[variable-bridge] Using command file: $COMMAND_FILE" >&2
+
+# Load BMAD config if available (from global location)
+if [ -f "$HOME/.claude/skills/bmad/bmad-v6/scripts/load-config.sh" ]; then
+    source "$HOME/.claude/skills/bmad/bmad-v6/scripts/load-config.sh"
+elif [ -f "$PROJECT_DIR/.claude/skills/bmad/bmad-v6/scripts/load-config.sh" ]; then
+    # Fallback: project-local BMAD installation
     source "$PROJECT_DIR/.claude/skills/bmad/bmad-v6/scripts/load-config.sh"
 fi
 
