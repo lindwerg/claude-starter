@@ -367,14 +367,22 @@ STORY-001: User management (8 points)
 ├── TASK-001-F: Implement getUsers service (backend, 30min)
 ├── TASK-001-G: Implement updateUser slice (backend, 45min)
 ├── TASK-001-H: Implement deleteUser slice (backend, 30min)
-├── TASK-001-I: Create UserCard entity (frontend, 30min)
-├── TASK-001-J: Create UserList widget (frontend, 45min)
-├── TASK-001-K: Create UserForm feature (frontend, 45min)
-├── TASK-001-L: Wire API calls with TanStack Query (frontend, 30min)
-├── TASK-001-M: Write backend integration tests (test, 60min)
-└── TASK-001-N: Write frontend component tests (test, 45min)
-Total: 14 tasks, ~8 hours
+├── TASK-001-I: Wire up all routers to app.ts (backend, 15min) ← MANDATORY!
+├── TASK-001-J: Create UserCard entity (frontend, 30min)
+├── TASK-001-K: Create UserList widget (frontend, 45min)
+├── TASK-001-L: Create UserForm feature (frontend, 45min)
+├── TASK-001-M: Wire API calls with TanStack Query (frontend, 30min)
+├── TASK-001-N: Write backend integration tests (test, 60min)
+└── TASK-001-O: Write frontend component tests (test, 45min)
+Total: 15 tasks, ~8.25 hours
 ```
+
+**CRITICAL: Task TASK-001-I "Wire up routers to app.ts" is MANDATORY for backend features!**
+- Import all feature routers (createUserRouter, getUsersRouter, etc.)
+- Mount to Express app: `app.use('/api/v1/users', createUserRouter())`
+- Depends on all controller tasks (C, E, G, H)
+- Must come BEFORE integration tests (N)
+- Acceptance: `curl http://localhost:3001/api/v1/users` returns valid response
 
 **API Integration (30-60 min per task):**
 ```
