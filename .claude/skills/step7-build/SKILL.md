@@ -94,6 +94,114 @@ cat .bmad/task-queue.yaml | grep status
 /commit  # Финальный коммит
 ```
 
+---
+
+## PRE-FLIGHT: Проверка готовности
+
+**BEFORE запуска — убедись что всё готово:**
+
+### Шаг 1: Проверить Task Queue
+
+```bash
+ls -la .bmad/task-queue.yaml
+```
+
+**Если файл НЕ найден:**
+```
+❌ Task Queue не найден!
+
+Сначала создай task queue:
+/step6-validate
+```
+STOP — Ralph Loop требует task-queue.yaml.
+
+### Шаг 2: Проверить Sprint Status
+
+```bash
+ls -la .bmad/sprint-status.yaml
+```
+
+**Если файл НЕ найден:**
+```
+❌ Sprint Status не найден!
+
+Сначала создай sprint status:
+/step6-validate
+```
+
+### Шаг 3: Проверить Project Structure
+
+```bash
+ls backend/package.json frontend/package.json
+```
+
+**Убедись что:**
+- ✅ backend/ существует
+- ✅ frontend/ существует
+- ✅ backend/package.json имеет: typecheck, lint, test
+- ✅ frontend/package.json имеет: typecheck, lint, test
+
+---
+
+## EXECUTION
+
+### Шаг 1: Вызови Ralph Loop
+
+**🚨 CRITICAL: Вызови ralph-loop skill СЕЙЧАС! 🚨**
+
+```bash
+Skill(skill: "ralph-loop")
+```
+
+**ИЛИ через Task tool (для фонового режима):**
+
+```bash
+Task({
+  subagent_type: "general-purpose",
+  description: "Execute Ralph Loop",
+  prompt: "Run ralph-loop skill to execute all tasks from .bmad/task-queue.yaml",
+  run_in_background: true  # Опционально
+})
+```
+
+**IMPORTANT:**
+- НЕ пытайся сам выполнять задачи
+- НЕ читай task-queue и делай вручную
+- ВЫЗОВИ ralph-loop skill - он знает как работать
+
+### Ralph Loop будет:
+1. Читать .bmad/task-queue.yaml
+2. Находить next pending task (с done dependencies)
+3. Спавнить subagent (backend-agent, frontend-agent и т.д.)
+4. Проверять quality gates (typecheck, lint, test)
+5. Автоматически коммитить
+6. Переходить к следующей задаче
+7. Продолжать пока: ALL DONE или BLOCKED
+
+### Шаг 2: Мониторинг прогресса
+
+Пока Ralph работает, можешь отслеживать:
+
+```bash
+# Текущий статус
+grep "status:" .bmad/task-queue.yaml | head -10
+
+# Сколько выполнено
+grep -c "status: done" .bmad/task-queue.yaml
+
+# Есть ли блокеры
+grep "status: blocked" .bmad/task-queue.yaml
+```
+
+### Шаг 3: При блокировке
+
+Если Ralph BLOCKED:
+1. Читай .bmad/task-queue.yaml - там описание проблемы
+2. Исправь вручную
+3. Запусти `/step7-build` снова - продолжит с blocked
+
+---
+
 ## Команды управления
 
 | Команда | Описание |
