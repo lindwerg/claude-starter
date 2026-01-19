@@ -107,54 +107,139 @@ Filter stories where `Sprint == ${NEXT_SPRINT}`.
 For EACH story in Sprint ${NEXT_SPRINT}, create atomic tasks:
 
 **Decomposition Rules:**
-- 1 task = 30-60 minutes MAX
-- 1 task = 1 file or 1 small change
-- Clear outputs (file paths)
-- Testable acceptance criteria
+- 1 task = 30-90 minutes (включая test + реализацию)
+- 1 task = 1 feature slice или 1 small change
+- Clear outputs (test файл + implementation файлы)
+- TDD: RED → GREEN → GATES в одной задаче
 
 **Task Types:**
 | Type | Description | Example |
 |------|-------------|---------|
 | `api` | OpenAPI spec changes | Add endpoint to openapi.yaml |
-| `backend` | Controller/Service/Repository | Implement login service |
-| `frontend` | Component/Hook/Page | Create AuthProvider |
-| `test` | Unit/Integration/E2E | Write auth tests |
+| `implementation` | Test + Code together | Write test + implement login service |
 | `devops` | CI/CD/Docker | Update Dockerfile |
+| `e2e` | Playwright E2E tests | Full user flow test |
 
-**Decomposition Pattern (example):**
+**НОВЫЙ ПОДХОД: Parallel TDD**
+
+Вместо раздельных задач (`test` → `backend`) теперь **одна задача = тест + код**:
+
+```yaml
+# ❌ СТАРОЕ (2 задачи, разорванный контекст)
+TASK-001-A: Write test (type: test, 30min)
+TASK-001-B: Implement code (type: backend, 45min)
+
+# ✅ НОВОЕ (1 задача, единый контекст)
+TASK-001-C: Login service with validation (type: implementation, 65min)
+  tdd_phases:
+    red: Write FAILING test
+    green: Implement code to make test pass
+    gates: Quality checks (typecheck/lint/test)
+```
+
+**Decomposition Pattern (Parallel TDD):**
 
 ```
 Story: AUTH-001 "TMA Authentication" (5 points)
-├── TASK-001-A: Add User model to Prisma (30min, backend)
-├── TASK-001-B: Add auth endpoints to openapi.yaml (30min, api)
-├── TASK-001-C: Implement initData validation (45min, backend)
-├── TASK-001-D: Implement login controller (30min, backend)
-├── TASK-001-E: Implement login service (45min, backend)
-├── TASK-001-F: Implement JWT generation (30min, backend)
-├── TASK-001-G: Create useAuth hook (30min, frontend)
-├── TASK-001-H: Create AuthProvider (45min, frontend)
+
+├── TASK-001-A: Prisma User model (35min, implementation)
+│   Outputs:
+│     - backend/prisma/schema.prisma
+│     - backend/src/features/user/user.test.ts
+│   Acceptance:
+│     [RED] Write user.test.ts: User creation test (expect fail)
+│     [GREEN] Add User model to schema.prisma
+│     [GREEN] Run prisma generate
+│     [GREEN] Test passes
+│     [GATES] typecheck + lint + test pass
+│
+├── TASK-001-B: Auth endpoints spec (20min, api)
+│   Outputs:
+│     - backend/src/openapi.yaml
+│   Acceptance:
+│     - Add POST /auth/telegram to openapi.yaml
+│     - Request/response schemas defined
+│     - Spec validates (openapi-cli lint)
+│
+├── TASK-001-C: Login service with validation (65min, implementation)
+│   Outputs:
+│     - backend/src/features/auth/login/auth.integration.test.ts
+│     - backend/src/features/auth/login/controller.ts
+│     - backend/src/features/auth/login/service.ts
+│     - backend/src/features/auth/login/dto.ts
+│   Acceptance:
+│     [RED] Write auth.integration.test.ts:
+│       • POST /auth/telegram with valid initData → 200
+│       • Invalid initData → 401
+│       • Run pnpm test → expect 2 FAILING
+│     [GREEN] Implement controller.ts (Express route)
+│     [GREEN] Implement service.ts (initData validation)
+│     [GREEN] Implement dto.ts (Zod schemas)
+│     [GREEN] Run pnpm test → ALL PASS (2 new tests green)
+│     [GATES] pnpm typecheck → exit 0
+│     [GATES] pnpm lint → exit 0
+│     [GATES] pnpm test → all pass
+│
+├── TASK-001-D: Frontend useAuth hook (50min, implementation)
+│   Outputs:
+│     - frontend/src/entities/auth/model/useAuth.test.ts
+│     - frontend/src/entities/auth/model/useAuth.ts
+│     - frontend/src/entities/auth/ui/AuthProvider.tsx
+│   Acceptance:
+│     [RED] Write useAuth.test.ts (expect fail)
+│     [GREEN] Implement useAuth hook
+│     [GREEN] Implement AuthProvider
+│     [GREEN] Tests pass
+│     [GATES] typecheck + lint + test pass
+│
+└── TASK-001-E: E2E auth flow (45min, e2e)
+    Outputs:
+      - e2e/auth.e2e.spec.ts
+    Acceptance:
+      - Write auth.e2e.spec.ts (Playwright)
+      - Full login flow: UI → API → storage
+      - E2E test passes
 ```
 
-**TDD ORDER (Tests FIRST!):**
-1. Write FAILING integration test
-2. Schema/Models (Prisma)
-3. API spec (OpenAPI)
-4. Backend implementation → make tests GREEN
-5. Write FAILING frontend test
-6. Frontend implementation → make tests GREEN
-7. E2E Playwright test LAST
+**Ключевые изменения:**
 
-**TDD Example:**
+| Аспект | Старое | Новое |
+|--------|--------|-------|
+| Тип задачи | `test` + `backend` | `implementation` |
+| Количество задач | 2 (test, code) | 1 (все вместе) |
+| Контекст | Разорван | Единый |
+| Время | 30 + 45 = 75 мин | 65 мин (оптимизация) |
+| Spawns | 2 subagent | 1 subagent |
+| Gates проверки | 2 раза | 1 раз (в конце) |
+
+**TDD Workflow внутри задачи:**
+
+Каждая `implementation` задача выполняется **одним subagent** в таком порядке:
+
 ```
-Story: AUTH-001 "TMA Authentication"
-├── TASK-001-A: Write auth.integration.test.ts (FAILING) (test, 30min)
-├── TASK-001-B: Add User model to Prisma (backend, 30min)
-├── TASK-001-C: Add auth endpoints to openapi.yaml (api, 30min)
-├── TASK-001-D: Implement login service (backend, 45min) ← GREEN
-├── TASK-001-E: Write useAuth.test.ts (FAILING) (test, 20min)
-├── TASK-001-F: Implement useAuth hook (frontend, 30min) ← GREEN
-└── TASK-001-G: auth.e2e.spec.ts (e2e, 45min) ← Playwright
+1. RED Phase (15-20 min)
+   └── Write failing test(s)
+   └── Run pnpm test → verify FAILURE
+   └── Do NOT implement yet!
+
+2. GREEN Phase (30-60 min)
+   └── Implement minimal code
+   └── Run pnpm test frequently
+   └── Verify ALL tests PASS
+
+3. REFACTOR Phase (optional, 10-15 min)
+   └── Improve code quality
+   └── Tests still pass
+
+4. GATES Phase (mandatory)
+   └── pnpm typecheck → must exit 0
+   └── pnpm lint → must exit 0
+   └── pnpm test → all pass
+   └── If ANY fail → fix and retry
+   └── Mark DONE only when all pass
 ```
+
+**Critical:** Subagent does NOT exit until ALL phases complete!
 
 ### Step 6: Generate task-queue.yaml
 
@@ -208,25 +293,66 @@ scratchpad:
 tasks:
   - id: "TASK-001-A"
     story_id: "AUTH-001"
-    title: "Add User model to Prisma"
-    type: "backend"
-    estimated_minutes: 30
+    title: "Prisma User model"
+    type: "implementation"  # ← NEW: test + code together
+    estimated_minutes: 35   # ← test + code combined
     status: "pending"
     depends_on: []
     outputs:
       - "backend/prisma/schema.prisma"
+      - "backend/src/features/user/user.test.ts"  # ← test file included
     acceptance:
-      - "User model with id, telegramId, username, createdAt"
-      - "Unique constraint on telegramId"
+      - "[RED] Write user.test.ts: User creation test (expect fail)"
+      - "[GREEN] Add User model to schema.prisma"
+      - "[GREEN] Run prisma generate"
+      - "[GREEN] Test passes"
+      - "[GATES] typecheck + lint + test pass"
+
+    tdd_phases:  # ← NEW: explicit TDD workflow
+      red:
+        description: "Write FAILING test"
+        tasks:
+          - "Create user.test.ts"
+          - "Write test: User.create() with valid data → expect User object"
+        verify:
+          command: "pnpm test"
+          expected: "fail"  # Tests MUST fail
+        max_duration_minutes: 15
+
+      green:
+        description: "Implement model"
+        tasks:
+          - "Add User model to schema.prisma"
+          - "Run prisma generate"
+        verify:
+          command: "pnpm test"
+          expected: "pass"  # ALL tests MUST pass
+        max_duration_minutes: 20
+
+      gates:
+        description: "Quality gates MUST pass"
+        required: true
+        tasks:
+          - "Run pnpm typecheck"
+          - "Run pnpm lint"
+          - "Run pnpm test"
+        verify:
+          - command: "pnpm typecheck"
+            expected_exit_code: 0
+          - command: "pnpm lint"
+            expected_exit_code: 0
+          - command: "pnpm test"
+            expected_exit_code: 0
+
     retries: 0
     max_retries: 3
-    receipt: null  # Filled by Ralph after completion
+    receipt: null
 
   - id: "TASK-001-B"
     story_id: "AUTH-001"
-    title: "Add auth endpoints to openapi.yaml"
-    type: "api"
-    estimated_minutes: 30
+    title: "Auth endpoints spec"
+    type: "api"  # ← API tasks remain simple (no TDD phases)
+    estimated_minutes: 20
     status: "pending"
     depends_on: ["TASK-001-A"]
     outputs:
@@ -235,6 +361,85 @@ tasks:
       - "POST /api/v1/auth/telegram endpoint defined"
       - "Request schema with initData field"
       - "Response schema with user and token"
+    retries: 0
+    max_retries: 3
+    receipt: null
+
+  - id: "TASK-001-C"
+    story_id: "AUTH-001"
+    title: "Login service with validation"
+    type: "implementation"  # ← NEW: combined test + code
+    estimated_minutes: 65
+    status: "pending"
+    depends_on: ["TASK-001-A", "TASK-001-B"]
+    outputs:
+      - "backend/src/features/auth/login/auth.integration.test.ts"
+      - "backend/src/features/auth/login/controller.ts"
+      - "backend/src/features/auth/login/service.ts"
+      - "backend/src/features/auth/login/dto.ts"
+    acceptance:
+      - "[RED] Write auth.integration.test.ts with 2 test cases"
+      - "[RED] Run pnpm test → expect 2 FAILING tests"
+      - "[GREEN] Implement login controller (Express route)"
+      - "[GREEN] Implement login service (initData validation logic)"
+      - "[GREEN] Implement LoginDto (Zod request/response schemas)"
+      - "[GREEN] Run pnpm test → ALL PASS (2 new tests green)"
+      - "[GATES] pnpm typecheck → exit 0 (no TS errors)"
+      - "[GATES] pnpm lint → exit 0 (no lint errors)"
+      - "[GATES] pnpm test → all pass (including new tests)"
+
+    tdd_phases:
+      red:
+        description: "Write FAILING test(s)"
+        tasks:
+          - "Create auth.integration.test.ts"
+          - "Test case 1: POST /auth/telegram with valid initData → expect 200"
+          - "Test case 2: POST with invalid initData → expect 401"
+        verify:
+          command: "pnpm test"
+          expected: "fail"
+        max_duration_minutes: 20
+
+      green:
+        description: "Implement code to make tests pass"
+        tasks:
+          - "Implement controller.ts: Express route handler"
+          - "Implement service.ts: initData validation logic"
+          - "Implement dto.ts: Zod schemas for request/response"
+        verify:
+          command: "pnpm test"
+          expected: "pass"
+        max_duration_minutes: 40
+
+      refactor:
+        description: "Optional: Improve code quality"
+        optional: true
+        tasks:
+          - "Extract validation helpers if needed"
+          - "Improve naming"
+        verify:
+          command: "pnpm test"
+          expected: "pass"
+        max_duration_minutes: 10
+
+      gates:
+        description: "Quality gates MUST pass"
+        required: true
+        tasks:
+          - "Run pnpm typecheck"
+          - "Run pnpm lint"
+          - "Run pnpm test"
+        verify:
+          - command: "pnpm typecheck"
+            expected_exit_code: 0
+          - command: "pnpm lint"
+            expected_exit_code: 0
+          - command: "pnpm test"
+            expected_exit_code: 0
+
+    retries: 0
+    max_retries: 3
+    receipt: null
 
   # ... continue for all tasks
 ```

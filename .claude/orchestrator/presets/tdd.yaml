@@ -1,73 +1,155 @@
-# TDD Preset - Red/Green/Refactor workflow
+# TDD Preset v2 - Parallel TDD (test + code in same task)
 name: tdd
-description: Test-Driven Development workflow
+description: Test-Driven Development with embedded TDD phases
 
-# Task order enforcement
-task_order:
-  - type: test
-    phase: red
-    acceptance_must_include: "FAILING"
-  - type: backend
-    phase: green
-    acceptance_must_include: "PASS"
-  - type: frontend
-    phase: green
-    acceptance_must_include: "PASS"
-  - type: test
-    phase: refactor
-    optional: true
+# Execution mode
+execution_mode: parallel_tdd  # NEW: test and code together
 
-# Quality gates specific to TDD
+# Task types
+task_types:
+  - api            # OpenAPI spec (no TDD)
+  - implementation # Test + Code together (TDD: RED → GREEN → GATES)
+  - devops         # CI/CD, Docker (minimal testing)
+  - e2e            # Playwright E2E tests
+
+# Quality gates timing
 quality_gates:
-  - name: typecheck
-    command: pnpm typecheck
-    required: true
+  timing: after_green  # CHANGED: was "after_red", now after implementation
 
-  - name: lint
-    command: pnpm lint
-    required: true
+  gates:
+    - name: typecheck
+      command: pnpm typecheck
+      required: true
+      description: "TypeScript compilation: zero errors"
 
-  - name: test
-    command: pnpm test
-    required: true
-    # In RED phase, tests MUST fail
-    # In GREEN phase, tests MUST pass
+    - name: lint
+      command: pnpm lint
+      required: true
+      description: "ESLint: zero errors"
 
-# Subagent mapping (our agents)
+    - name: test
+      command: pnpm test
+      required: true
+      description: "All tests pass (including new ones)"
+
+# Subagent routing
 subagents:
-  test: test-agent
-  backend: backend-agent
-  frontend: frontend-agent
   api: api-agent
+  implementation: backend-agent  # or frontend-agent based on outputs
   devops: devops-agent
+  e2e: test-agent
 
-# Prompts per phase
-prompts:
-  red: |
-    TDD RED PHASE: Write a FAILING test.
+# TDD phases (for implementation tasks)
+tdd_phases:
 
-    Your job is to:
-    1. Write a test that describes the expected behavior
-    2. The test MUST FAIL (implementation doesn't exist yet)
-    3. Output the failing test error message
+  red:
+    description: "Write FAILING test(s)"
+    duration_minutes: 15-20
+    verify:
+      command: "pnpm test"
+      expected_exit_code: 1  # MUST fail
+    prompt: |
+      TDD RED PHASE: Write failing test.
 
-    DO NOT implement the feature. Only write the test.
-    After writing, run `pnpm test` and confirm it FAILS.
+      1. Create test file from outputs list
+      2. Write test cases from acceptance criteria [RED]
+      3. Use Vitest or React Testing Library
+      4. Run `pnpm test` and VERIFY it FAILS
+      5. Show failure output
 
-  green: |
-    TDD GREEN PHASE: Make the test pass.
+      DO NOT implement code yet!
+      Proceed to GREEN phase after confirming failure.
 
-    Your job is to:
-    1. Read the failing test(s)
-    2. Write MINIMAL code to make the test pass
-    3. Do not over-engineer or add extra features
-    4. Run `pnpm test` and confirm ALL tests PASS.
+  green:
+    description: "Implement code to make tests pass"
+    duration_minutes: 30-60
+    verify:
+      command: "pnpm test"
+      expected_exit_code: 0  # MUST pass
+    prompt: |
+      TDD GREEN PHASE: Make tests pass.
 
-  refactor: |
-    TDD REFACTOR PHASE: Clean up the code.
+      1. Read failing test(s) from RED phase
+      2. Implement minimal code from acceptance [GREEN]:
+         - Controller (HTTP layer)
+         - Service (business logic)
+         - DTO (Zod validation)
+         - Repository (data access)
+      3. Follow architecture (VSA or FSD)
+      4. Run `pnpm test` frequently
+      5. VERIFY ALL tests PASS (including new ones)
 
-    Your job is to:
-    1. Improve code quality without changing behavior
-    2. Remove duplication
-    3. Improve naming
-    4. Tests MUST still pass after refactoring
+      Do NOT over-engineer. Just make tests green.
+      Proceed to GATES phase after all tests pass.
+
+  refactor:
+    description: "Improve code quality (optional)"
+    duration_minutes: 10-15
+    optional: true
+    verify:
+      command: "pnpm test"
+      expected_exit_code: 0  # STILL pass
+    prompt: |
+      TDD REFACTOR PHASE: Clean up code.
+
+      1. Review GREEN phase implementation
+      2. Refactor for quality:
+         - Extract duplicated logic
+         - Better naming
+         - Simplify complexity
+         - Improve types
+      3. Run `pnpm test` after each change
+      4. VERIFY tests STILL PASS
+
+      Tests must stay green. Revert if tests break.
+
+  gates:
+    description: "Quality gates (mandatory)"
+    duration_minutes: 5-10
+    required: true
+    max_retries: 3
+    prompt: |
+      TDD GATES PHASE: Verify quality.
+
+      Run ALL gates:
+      1. pnpm typecheck → must exit 0
+      2. pnpm lint → must exit 0
+      3. pnpm test → all tests must pass
+
+      IF ANY FAIL:
+      - Fix the issue
+      - Re-run gates
+      - Increment retry counter
+
+      IF ALL PASS:
+      - Return DONE
+
+      IF retries >= 3:
+      - Return BLOCKED (human needed)
+
+# Execution flow
+execution_flow:
+  - phase: red
+    required: true
+    exit_on_complete: false  # Continue to next phase
+
+  - phase: green
+    required: true
+    exit_on_complete: false  # Continue to next phase
+
+  - phase: refactor
+    required: false
+    exit_on_complete: false  # Continue to gates
+
+  - phase: gates
+    required: true
+    exit_on_complete: true   # Mark task DONE and exit
+
+# Task completion criteria
+completion_criteria:
+  all_phases_completed: true
+  all_gates_passed: true
+  outputs_exist: true
+  tests_passing: true
+  no_typescript_errors: true
+  no_lint_errors: true

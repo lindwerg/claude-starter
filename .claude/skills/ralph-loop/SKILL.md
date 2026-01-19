@@ -55,13 +55,17 @@ Task({
 
 ### Agent Type Mapping
 
-| Task Type | subagent_type |
-|-----------|---------------|
-| `api` | `api-agent` |
-| `backend` | `backend-agent` |
-| `frontend` | `frontend-agent` |
-| `test` | `test-agent` |
-| `devops` | `devops-agent` |
+| Task Type | subagent_type | Responsibilities |
+|-----------|---------------|------------------|
+| `api` | `api-agent` | OpenAPI spec only, no tests |
+| `implementation` | Dynamic | Test + Code together (TDD workflow) |
+| `devops` | `devops-agent` | CI/CD, Docker, no tests |
+| `e2e` | `test-agent` | Playwright E2E tests |
+
+**Implementation task routing (based on outputs):**
+- If `outputs` contains `backend/**/*.ts` → `backend-agent`
+- If `outputs` contains `frontend/**/*.tsx` → `frontend-agent`
+- If both backend AND frontend → error (split into 2 tasks)
 
 ### FORBIDDEN
 
@@ -162,37 +166,146 @@ Before running Ralph Loop:
                      [STOP: Human needed]    [CONTINUE: Next task]
 ```
 
-## TDD Rules
+## TDD Rules for Implementation Tasks
 
-**For `test` type tasks:**
-- Write FAILING test first
-- Verify `pnpm test` shows failure
-- DO NOT implement — just test
-- This is RED phase of TDD
+**For `implementation` type tasks:**
 
-**For `backend`/`frontend` type tasks:**
-- Run tests FIRST to confirm they fail
-- Implement code
-- Run tests — must ALL PASS
-- This is GREEN phase of TDD
+Ralph spawns ONE subagent that executes ALL TDD phases sequentially.
 
-**Task order enforces TDD:**
+### Phase 1: RED (Write Failing Test)
+
+**Goal:** Create test(s) that describe expected behavior.
+
+**Subagent instructions:**
+1. Read `task.tdd_phases.red.tasks`
+2. Create test file (*.test.ts or *.integration.test.ts)
+3. Write test cases from acceptance criteria marked `[RED]`
+4. Run `pnpm test`
+5. **VERIFY:** Tests MUST FAIL
+   - If tests pass → ERROR (no implementation exists yet!)
+   - If tests fail → SUCCESS (expected behavior)
+6. Show failure output in response
+7. **DO NOT EXIT** — proceed to GREEN phase
+
+**Duration:** 15-20 minutes
+
+**Output:** Failing test file(s)
+
+### Phase 2: GREEN (Implement Code)
+
+**Goal:** Write minimal code to make tests pass.
+
+**Subagent instructions:**
+1. Read failing tests from RED phase
+2. Read `task.tdd_phases.green.tasks`
+3. Implement code from acceptance criteria marked `[GREEN]`:
+   - Controller (HTTP layer)
+   - Service (business logic)
+   - DTO (Zod validation)
+   - Repository (data access) if needed
+4. Run `pnpm test` frequently during implementation
+5. **VERIFY:** ALL tests PASS (including new ones from RED)
+   - If tests still fail → continue implementing
+   - If tests pass → SUCCESS
+6. **DO NOT EXIT** — proceed to REFACTOR (if needed) then GATES
+
+**Duration:** 30-60 minutes
+
+**Output:** Implementation files + passing tests
+
+### Phase 3: REFACTOR (Optional)
+
+**Goal:** Improve code quality without changing behavior.
+
+**Subagent instructions:**
+1. Read `task.tdd_phases.refactor.tasks` (if present)
+2. Review GREEN phase code for improvements:
+   - Extract duplicated logic
+   - Better naming
+   - Simplify complexity
+   - Add type safety
+3. Run `pnpm test` after each refactor
+4. **VERIFY:** Tests STILL PASS
+   - If tests break → revert change
+   - If tests pass → keep improvement
+5. **DO NOT EXIT** — proceed to GATES
+
+**Duration:** 10-15 minutes (optional)
+
+**Output:** Improved code, tests still passing
+
+### Phase 4: GATES (Mandatory)
+
+**Goal:** Verify code meets quality standards.
+
+**Subagent instructions:**
+1. Run ALL quality gates from `task.tdd_phases.gates.verify`:
+   ```bash
+   pnpm typecheck  # Must exit 0 (no TS errors)
+   pnpm lint       # Must exit 0 (no lint errors)
+   pnpm test       # Must show all tests pass
+   ```
+2. **IF ANY GATE FAILS:**
+   - Fix the issue (go back to GREEN/REFACTOR)
+   - Re-run gates
+   - Increment `task.retries`
+3. **IF ALL GATES PASS:**
+   - Mark task as DONE
+   - Return success to Ralph
+4. **IF retries >= max_retries:**
+   - Mark task as BLOCKED
+   - Return failure to Ralph
+
+**Duration:** 5-10 minutes (including fixes)
+
+**Output:** Quality-verified, production-ready code
+
+---
+
+**Critical Rules:**
+
+1. **Single Subagent Execution:** All phases run in ONE subagent spawn
+2. **Sequential Flow:** RED → GREEN → REFACTOR → GATES (no skipping)
+3. **Gates at End:** Quality gates checked ONCE after GREEN (not after RED!)
+4. **No Early Exit:** Subagent completes all phases before returning
+5. **Task = DONE:** Only when all phases + gates complete successfully
+
+---
+
+**NEW: Task structure with TDD phases:**
+
 ```yaml
-# Task queue ensures test → implementation order:
-- id: "TASK-001-A"
-  type: "test"
-  title: "Write FAILING auth test"
-  acceptance:
-    - "Create auth.integration.test.ts"
-    - "pnpm test shows 1 FAILING test"
-
-- id: "TASK-001-B"
-  type: "backend"
-  depends_on: ["TASK-001-A"]
-  title: "Implement auth service"
-  acceptance:
-    - "AuthService validates initData"
-    - "pnpm test shows ALL PASSING"  # GREEN!
+- id: "TASK-001-C"
+  type: "implementation"
+  title: "Login service with validation"
+  tdd_phases:
+    red:
+      description: "Write FAILING test(s)"
+      tasks:
+        - "Create auth.integration.test.ts"
+        - "Test: POST /auth/telegram valid → 200"
+        - "Test: POST invalid → 401"
+      verify:
+        command: "pnpm test"
+        expected: "fail"
+    green:
+      description: "Implement code"
+      tasks:
+        - "Implement controller.ts"
+        - "Implement service.ts"
+        - "Implement dto.ts"
+      verify:
+        command: "pnpm test"
+        expected: "pass"
+    gates:
+      required: true
+      verify:
+        - command: "pnpm typecheck"
+          expected_exit_code: 0
+        - command: "pnpm lint"
+          expected_exit_code: 0
+        - command: "pnpm test"
+          expected_exit_code: 0
 ```
 
 ## Task Queue Workflow
@@ -234,9 +347,8 @@ return null  # No available tasks
 
 **Priority order:**
 1. `api` tasks first (spec before implementation)
-2. `backend` tasks (data layer)
-3. `frontend` tasks (UI layer)
-4. `test` tasks last (verify implementation)
+2. `implementation` tasks (test + code together)
+3. `e2e` tasks last (full flow verification)
 
 ### 3. Execute Task
 
@@ -254,32 +366,93 @@ tasks:
 | Task Type | Subagent | Focus |
 |-----------|----------|-------|
 | `api` | API Agent | Update openapi.yaml, ensure spec validity |
-| `backend` | Backend Agent | VSA slice: controller, service, dto, schema |
-| `frontend` | Frontend Agent | FSD feature: UI, model, api hooks |
-| `test` | Test Agent | Unit + integration tests, coverage |
+| `implementation` | Backend/Frontend Agent | TDD workflow: RED → GREEN → GATES |
 | `devops` | DevOps Agent | CI/CD, Docker, deploy configs |
+| `e2e` | Test Agent | Playwright E2E tests |
 
-**Subagent prompt template:**
+**Subagent routing for `implementation` tasks:**
+- If outputs contain `backend/**/*.ts` → Backend Agent
+- If outputs contain `frontend/**/*.tsx` → Frontend Agent
+
+**Subagent prompt template (для implementation tasks):**
 ```
-Execute task: {task.id}
+Execute task: {task.id} (type: implementation)
 
 **Context:**
 - Story: {task.story_id}
 - Title: {task.title}
-- Type: {task.type}
+- Estimated time: {task.estimated_minutes} minutes (all phases)
 
-**Outputs required:**
+**TDD Workflow (complete in THIS session):**
+
+═══════════════════════════════════════════════════════
+PHASE 1: RED (Write Failing Test)
+═══════════════════════════════════════════════════════
+
+{task.tdd_phases.red.tasks}
+
+→ Create: {test_file_path}
+→ Run: pnpm test
+→ VERIFY: Tests FAIL (show failure output)
+→ DO NOT proceed until failure confirmed
+
+═══════════════════════════════════════════════════════
+PHASE 2: GREEN (Implement Code)
+═══════════════════════════════════════════════════════
+
+{task.tdd_phases.green.tasks}
+
+→ Implement minimal code to make tests pass
+→ Run: pnpm test frequently
+→ VERIFY: ALL tests PASS (including new ones)
+→ Show passing test output
+
+═══════════════════════════════════════════════════════
+PHASE 3: REFACTOR (Optional)
+═══════════════════════════════════════════════════════
+
+{task.tdd_phases.refactor.tasks if present}
+
+→ Improve code quality (if needed)
+→ Run: pnpm test after changes
+→ VERIFY: Tests STILL PASS
+
+═══════════════════════════════════════════════════════
+PHASE 4: GATES (Mandatory Quality Check)
+═══════════════════════════════════════════════════════
+
+→ Run: pnpm typecheck (must exit 0)
+→ Run: pnpm lint (must exit 0)
+→ Run: pnpm test (must show all pass)
+→ VERIFY: ALL GATES PASS
+
+IF ANY GATE FAILS:
+- Fix the issue
+- Re-run gates
+- Do NOT mark done until all pass
+
+═══════════════════════════════════════════════════════
+
+**Required Outputs:**
 {task.outputs}
 
-**Acceptance criteria:**
+**Acceptance Criteria:**
 {task.acceptance}
 
-**Dependencies completed:**
-{task.depends_on} — files already created
+**Dependencies Completed:**
+{task.depends_on} — these files already exist
 
-Follow VSA/FSD architecture rules strictly.
-Return DONE when all acceptance criteria met.
-Return BLOCKED if you encounter unresolvable issue.
+**Architecture Rules:**
+- Backend: Follow VSA (features/{feature}/{slice}/*.ts)
+- Frontend: Follow FSD (entities/features/widgets/pages/shared)
+- TypeScript: strict mode, no any, Zod validation
+
+**Return Format:**
+- DONE: When all phases + gates complete
+- BLOCKED: If unresolvable issue after 3 attempts
+- Include: Test results + gate outputs in response
+
+Begin with RED phase now!
 ```
 
 ### 4. Verify Task

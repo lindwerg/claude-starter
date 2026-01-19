@@ -31,9 +31,23 @@ Execute these helper operations:
 4. **Load template** per `helpers.md#Load-Template`
    - Template: `~/.claude/config/bmad/templates/prd.md`
 
+5. **Check batch mode** per `helpers.md#Check-Batch-Mode`
+   - If BMAD_BATCH_MODE environment variable is set to "true":
+     - Load answers per `helpers.md#Load-Answers-File`
+     - Skip interactive requirements gathering (set SKIP_INTERVIEW=true)
+   - If BMAD_BATCH_MODE not set:
+     - Proceed with interactive requirements gathering (set SKIP_INTERVIEW=false)
+
 ---
 
 ## Requirements Gathering Process
+
+**IF SKIP_INTERVIEW is true:**
+- Use variables from BMAD_* environment variables (exported by variable-bridge.sh)
+- All 23 answer variables are available (see `answers-file-schemas.md#step3-answers.yaml`)
+- Skip directly to Generate Document section
+
+**ELSE (interactive mode):**
 
 Use TodoWrite to track: Pre-flight → FRs → NFRs → Epics → Stories → Generate → Validate → Update
 
@@ -270,14 +284,31 @@ Set `{{user_stories}}` to:
 
 ---
 
+**(End of interactive mode)**
+
+---
+
 ## Generate Document
+
+**Note:** In batch mode, all variables are already loaded from BMAD_* environment variables. In interactive mode, variables were collected from requirements gathering above.
 
 1. **Load template** from `~/.claude/config/bmad/templates/prd.md`
 
 2. **Substitute variables** per `helpers.md#Apply-Variables-to-Template`:
-   - All collected requirements (FRs, NFRs, Epics)
-   - Standard variables (date, user_name, project_name, etc.)
-   - Product brief path if available
+   - **Source:** Batch mode uses BMAD_* env vars, interactive mode uses collected values
+   - **Standard variables:**
+     - `{{date}}`, `{{user_name}}`, `{{project_name}}`, `{{project_type}}`, `{{project_level}}`
+     - Product brief path if available
+   - **Content variables (23 total, see `answers-file-schemas.md#step3-answers.yaml`):**
+     - `{{product_overview}}`, `{{target_users}}`, `{{key_differentiators}}`
+     - `{{user_stories}}` (formatted multi-line text)
+     - `{{functional_requirements}}` (formatted multi-line text with FR-001, FR-002, etc.)
+     - `{{nfr_performance}}`, `{{nfr_security}}`, `{{nfr_scalability}}`
+     - `{{nfr_availability}}`, `{{nfr_usability}}`, `{{nfr_maintainability}}`
+     - `{{epics}}` (formatted multi-line text with EPIC-001, EPIC-002, etc.)
+     - `{{acceptance_criteria}}` (global acceptance criteria)
+     - `{{risks_technical}}`, `{{risks_business}}`, `{{risks_timeline}}`
+     - `{{assumptions}}`, `{{out_of_scope}}`
 
 3. **Generate traceability matrix:**
    ```

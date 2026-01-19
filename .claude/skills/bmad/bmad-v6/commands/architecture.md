@@ -490,6 +490,204 @@ Document major trade-offs:
 
 ---
 
+## Part 13: Update Project CLAUDE.md
+
+**Purpose:** Persist architecture decisions in project-level instructions for future Ralph iterations and all skills.
+
+### Why This Matters
+
+After architecture is complete, Claude Code needs **project-specific context**:
+- Which pattern was chosen and WHY (Monolith vs Microservices)
+- What entities exist (User, Character, Conversation)
+- How API is structured (REST + JWT vs GraphQL)
+- Critical NFRs that drive decisions
+
+Without this, every Ralph task starts "cold" and may make inconsistent decisions.
+
+### Implementation Steps
+
+**Step 1: Check CLAUDE.md exists**
+
+```bash
+ls CLAUDE.md
+```
+
+If exists → proceed. If not → warn user and skip (это не критично).
+
+**Step 2: Extract key data from generated architecture.md**
+
+```bash
+# Find the generated architecture file
+ARCH_FILE=$(find docs -name "architecture-*.md" -type f | sort -r | head -1)
+
+# Verify file exists
+if [ ! -f "$ARCH_FILE" ]; then
+  echo "⚠️  Architecture file not found, skipping CLAUDE.md update"
+  exit 0
+fi
+```
+
+**Step 3: Extract architectural decisions**
+
+```bash
+# Extract architectural pattern (first line after "**Pattern:**")
+PATTERN=$(grep -A 1 "^\*\*Pattern:\*\*" "$ARCH_FILE" | tail -1 | sed 's/^[[:space:]]*//')
+
+# Extract rationale (first line after "**Rationale:**")
+RATIONALE=$(grep -A 1 "^\*\*Rationale:\*\*" "$ARCH_FILE" | tail -1 | sed 's/^[[:space:]]*//')
+
+# Extract Backend stack (from ### Backend section, first 3 lines)
+BACKEND=$(sed -n '/^### Backend$/,/^###/p' "$ARCH_FILE" | sed '1d;$d' | head -3)
+
+# Extract Frontend stack (from ### Frontend section, first 3 lines)
+FRONTEND=$(sed -n '/^### Frontend$/,/^###/p' "$ARCH_FILE" | sed '1d;$d' | head -3)
+
+# Extract Database (from ### Database section, first 3 lines)
+DATABASE=$(sed -n '/^### Database$/,/^###/p' "$ARCH_FILE" | sed '1d;$d' | head -3)
+
+# Extract Data Model entities (lines with numbers from Data Model section)
+DATA_MODEL=$(sed -n '/^## Data Model$/,/^##/p' "$ARCH_FILE" | grep -E "^[0-9]\." | head -7)
+
+# Extract API approach (from ### API Architecture section, first 5 lines)
+API_ARCH=$(sed -n '/^### API Architecture$/,/^###/p' "$ARCH_FILE" | sed '1d;$d' | head -5)
+
+# Extract endpoints (lines starting with - GET|POST|PUT|DELETE|PATCH from Endpoints section)
+ENDPOINTS=$(sed -n '/^### Endpoints$/,/^###/p' "$ARCH_FILE" | grep -E "^- (GET|POST|PUT|DELETE|PATCH)" | head -15)
+
+# Extract critical NFRs (from Architectural Drivers section, first 5 lines)
+DRIVERS=$(sed -n '/^## Architectural Drivers$/,/^##/p' "$ARCH_FILE" | head -8 | tail -5)
+```
+
+**Step 4: Generate section content**
+
+```bash
+cat > /tmp/arch-section.md << 'EOF'
+
+## Project Architecture
+
+> Auto-generated from architecture.md on $(date +%Y-%m-%d)
+
+### Architectural Pattern
+
+**Pattern:** ${PATTERN}
+
+**Rationale:** ${RATIONALE}
+
+### Technology Stack
+
+#### Backend
+${BACKEND}
+[Full details in architecture.md Section 3]
+
+#### Frontend
+${FRONTEND}
+[Full details in architecture.md Section 3]
+
+#### Database
+${DATABASE}
+[Full details in architecture.md Section 3]
+
+### Data Model (Core Entities)
+
+${DATA_MODEL}
+
+[Full schema in architecture.md Section 5]
+
+### API Guidelines
+
+${API_ARCH}
+
+**Key Endpoints:**
+\`\`\`
+${ENDPOINTS}
+\`\`\`
+
+[Complete API spec in architecture.md Section 6]
+
+### Architectural Drivers (Critical NFRs)
+
+${DRIVERS}
+
+[All NFRs addressed in architecture.md Section 7]
+
+---
+
+> **Architecture doc:** \`${ARCH_FILE}\`
+> **Next step:** \`/sprint-planning\`
+
+EOF
+
+# Substitute variables
+eval "cat <<EOF
+$(cat /tmp/arch-section.md)
+EOF
+" > /tmp/arch-section-final.md
+```
+
+**Step 5: Insert into CLAUDE.md**
+
+```bash
+# Check if CLAUDE.md exists
+if [ ! -f "CLAUDE.md" ]; then
+  echo "⚠️  CLAUDE.md not found, skipping update"
+  exit 0
+fi
+
+# Check if "## Project Architecture" already exists
+if grep -q "^## Project Architecture" CLAUDE.md; then
+  echo "⚠️  Project Architecture section already exists in CLAUDE.md"
+  echo "Manual update required if you want to refresh it."
+  exit 0
+fi
+
+# Find insertion point (before "## Project-Specific Overrides" or end of file)
+if grep -q "^## Project-Specific Overrides" CLAUDE.md; then
+  INSERT_LINE=$(grep -n "^## Project-Specific Overrides" CLAUDE.md | head -1 | cut -d: -f1)
+  # Insert before this section
+  head -n $((INSERT_LINE - 1)) CLAUDE.md > /tmp/claude-new.md
+  cat /tmp/arch-section-final.md >> /tmp/claude-new.md
+  echo "" >> /tmp/claude-new.md  # Empty line
+  tail -n +${INSERT_LINE} CLAUDE.md >> /tmp/claude-new.md
+else
+  # Append at end
+  cp CLAUDE.md /tmp/claude-new.md
+  cat /tmp/arch-section-final.md >> /tmp/claude-new.md
+fi
+
+# Replace original
+mv /tmp/claude-new.md CLAUDE.md
+```
+
+**Step 6: Validate and report**
+
+```bash
+# Verify section was added
+if grep -q "^## Project Architecture" CLAUDE.md; then
+  echo "✅ CLAUDE.md updated with project architecture"
+
+  # Count entities in data model
+  ENTITY_COUNT=$(echo "$DATA_MODEL" | wc -l | xargs)
+
+  # Count endpoints
+  ENDPOINT_COUNT=$(echo "$ENDPOINTS" | wc -l | xargs)
+
+  # Report to user
+  echo ""
+  echo "## CLAUDE.md Updated Successfully"
+  echo ""
+  echo "Added section: ## Project Architecture"
+  echo "  - Pattern: ${PATTERN}"
+  echo "  - Entities: ${ENTITY_COUNT}"
+  echo "  - Key endpoints: ${ENDPOINT_COUNT}"
+  echo ""
+  echo "Future Claude sessions will have project-specific context!"
+else
+  echo "⚠️  Failed to update CLAUDE.md"
+fi
+```
+
+---
+
 ## Validation
 
 ```
@@ -514,7 +712,8 @@ Document major trade-offs:
 
 Per `helpers.md#Update-Workflow-Status`:
 1. Update `architecture` status to file path
-2. Save
+2. Update `claude_md_updated` to "yes" (if CLAUDE.md was updated)
+3. Save
 
 ---
 
@@ -522,6 +721,7 @@ Per `helpers.md#Update-Workflow-Status`:
 
 ```
 ✓ Architecture complete!
+✓ Project CLAUDE.md updated with architecture decisions
 
 Next: Sprint Planning (Phase 4)
 Run /sprint-planning to:
@@ -534,6 +734,7 @@ You now have complete planning documentation:
 ✓ Product Brief
 ✓ PRD
 ✓ Architecture
+✓ CLAUDE.md (project-specific context)
 
 Implementation teams have everything needed to build successfully!
 ```

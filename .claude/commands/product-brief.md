@@ -30,9 +30,23 @@ Before starting, execute these helper operations:
 3. **Load template** per `helpers.md#Load-Template`
    - Template: `~/.claude/config/bmad/templates/product-brief.md`
 
+4. **Check batch mode** per `helpers.md#Check-Batch-Mode`
+   - If BMAD_BATCH_MODE environment variable is set to "true":
+     - Load answers per `helpers.md#Load-Answers-File`
+     - Skip interactive interview (set SKIP_INTERVIEW=true)
+   - If BMAD_BATCH_MODE not set:
+     - Proceed with interactive interview (set SKIP_INTERVIEW=false)
+
 ---
 
 ## Interview Script
+
+**IF SKIP_INTERVIEW is true:**
+- Use variables from BMAD_* environment variables (exported by variable-bridge.sh)
+- All 29 answer variables are available (see `answers-file-schemas.md#step2-answers.yaml`)
+- Skip directly to Generate Document section
+
+**ELSE (interactive mode):**
 
 Use TodoWrite to track interview progress (14 sections).
 
@@ -258,19 +272,36 @@ Approach: **Professional, methodical, curious.** Ask clarifying follow-ups if an
 
 ---
 
+**(End of interactive mode)**
+
+---
+
 ## Generate Document
+
+**Note:** In batch mode, all variables are already loaded from BMAD_* environment variables. In interactive mode, variables were collected from user interview above.
 
 After collecting all inputs:
 
 1. **Load template** from `~/.claude/config/bmad/templates/product-brief.md`
 
 2. **Substitute variables** per `helpers.md#Apply-Variables-to-Template`:
-   - All `{{variable}}` placeholders with collected values
-   - `{{date}}` with current date (YYYY-MM-DD)
-   - `{{user_name}}` from config
-   - `{{project_name}}` from config
-   - `{{project_type}}` from config
-   - `{{project_level}}` from config
+   - **Source:** Batch mode uses BMAD_* env vars, interactive mode uses collected values
+   - **Standard variables:**
+     - `{{date}}` with current date (YYYY-MM-DD)
+     - `{{user_name}}` from config
+     - `{{project_name}}` from config
+     - `{{project_type}}` from config
+     - `{{project_level}}` from config
+   - **Content variables (29 total, see `answers-file-schemas.md#step2-answers.yaml`):**
+     - `{{executive_summary}}`, `{{vision}}`
+     - `{{problem_statement}}`, `{{why_now}}`, `{{current_solution}}`
+     - `{{primary_users}}`, `{{user_personas}}`, `{{user_pain_points}}`
+     - `{{proposed_solution}}`, `{{key_features}}`, `{{unique_value_proposition}}`
+     - `{{business_goals}}`, `{{success_metrics}}`
+     - `{{in_scope}}`, `{{out_of_scope}}`
+     - `{{stakeholders}}`
+     - `{{constraints}}`, `{{technical_constraints}}`, `{{compliance_requirements}}`
+     - `{{assumptions}}`, `{{risks}}`
 
 3. **Determine output path** per `helpers.md#Save-Output-Document`:
    - Format: `{output_folder}/product-brief-{project-name}-{date}.md`

@@ -42,6 +42,79 @@ Execute in order:
 3. Return merged config object
 ```
 
+## Answers File Operations
+
+### Load-Answers-File
+```
+Purpose: Load answers from step-* skill for batch mode execution
+Path: /tmp/step{N}-answers.yaml (temporary file created by skill)
+
+Using Read tool:
+1. Check if BMAD_BATCH_MODE environment variable is set
+2. If true, read BMAD_ANSWERS_FILE path
+3. Parse YAML to extract answer variables:
+   - executive_summary
+   - problem_statement
+   - primary_users
+   - [... all collected answers ...]
+4. Skip metadata fields:
+   - collected_at
+   - collected_by
+5. Map YAML keys to template variables:
+   - YAML: executive_summary → Template: {{executive_summary}}
+   - YAML: problem-statement → Template: {{problem_statement}}
+6. Return answers object for template substitution
+```
+
+### Check-Batch-Mode
+```
+Purpose: Determine if command called from step-* skill or directly
+
+Process:
+1. Check for BMAD_BATCH_MODE environment variable
+2. If set to "true":
+   - Command is in batch mode (called from skill)
+   - Skip interactive interview
+   - Use answers from Load-Answers-File
+3. If not set:
+   - Command is in interactive mode (called directly)
+   - Proceed with standard interview process
+```
+
+### Variable-Bridge Integration
+```
+Purpose: Use variable-bridge.sh script for seamless integration
+
+From step-* skill:
+```bash
+# Step skill creates answers YAML
+cat > /tmp/step2-answers.yaml <<EOF
+executive_summary: "..."
+problem_statement: "..."
+[... all answers ...]
+EOF
+
+# Call variable-bridge.sh
+bash ~/.claude/skills/bmad/bmad-v6/utils/variable-bridge.sh \
+  product-brief \
+  /tmp/step2-answers.yaml
+
+# Bridge exports BMAD_* env vars and calls command
+```
+
+From BMAD command:
+```markdown
+## Pre-Flight
+
+1. Load context per helpers.md#Combined-Config-Load
+2. Check status per helpers.md#Load-Workflow-Status
+3. Load template per helpers.md#Load-Template
+4. **Check batch mode** per helpers.md#Check-Batch-Mode
+   - If batch mode: Load answers per helpers.md#Load-Answers-File
+   - If interactive: Proceed with interview
+```
+```
+
 ## Status File Operations
 
 ### Load Workflow Status

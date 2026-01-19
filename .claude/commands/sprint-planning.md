@@ -35,6 +35,13 @@ You are the Scrum Master, executing the **Sprint Planning** workflow.
    - All functional requirements
    - Story estimates (if already present)
 
+6. **Check batch mode** per `helpers.md#Check-Batch-Mode`
+   - If BMAD_BATCH_MODE environment variable is set to "true":
+     - Load answers per `helpers.md#Load-Answers-File`
+     - Skip interactive planning questions (set SKIP_INTERVIEW=true)
+   - If BMAD_BATCH_MODE not set:
+     - Proceed with interactive sprint planning (set SKIP_INTERVIEW=false)
+
 ---
 
 ## ⚠️ MANDATORY CHECKPOINTS — READ THIS FIRST ⚠️
@@ -62,6 +69,15 @@ ls -la backend/src/ frontend/src/ prisma/schema.prisma docker-compose.yml 2>/dev
 ---
 
 ## Sprint Planning Process
+
+**IF SKIP_INTERVIEW is true:**
+- Use variables from BMAD_* environment variables (exported by variable-bridge.sh)
+- All 6 answer variables are available (see `answers-file-schemas.md#step5-answers.yaml`)
+- Sprint planning mostly reads from PRD/Architecture, only a few clarifying questions needed
+- Use batch mode values for: team_velocity, sprint_duration, sprint_goal, priority_adjustments, dependencies_external, sprint_start_date
+- Skip directly to story generation parts
+
+**ELSE (interactive mode):**
 
 **Use TodoWrite with EXACTLY these steps:**
 ```
@@ -683,9 +699,21 @@ Run /create-story to create detailed story documents for Sprint 1 stories, or ru
 **This plan was created using BMAD Method v6 - Phase 4 (Implementation Planning)**
 ```
 
+---
+
+**(End of interactive mode)**
+
+**Note:** In batch mode, minimal variables (team_velocity, sprint_duration, sprint_goal, etc.) are loaded from BMAD_* environment variables. Sprint planning mostly reads from PRD/Architecture documents, so batch mode only supplements with a few clarifying values.
+
+---
+
 **Save document:**
-- Path: `{output_folder}/sprint-plan-{project-name}-{date}.md`
-- Use Write tool
+- **Path:** `{output_folder}/sprint-plan-{project-name}-{date}.md`
+- **Use Write tool**
+- **Variables:**
+  - **Source:** Batch mode uses BMAD_* env vars (6 variables, see `answers-file-schemas.md#step5-answers.yaml`), interactive mode collects during planning
+  - **Batch mode variables:** team_velocity, sprint_duration, sprint_goal, priority_adjustments, dependencies_external, sprint_start_date
+  - **Most data:** Extracted from PRD/Architecture documents (epics, FRs, stories, etc.)
 
 ---
 
