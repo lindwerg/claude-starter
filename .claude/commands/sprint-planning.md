@@ -50,15 +50,51 @@ You are the Scrum Master, executing the **Sprint Planning** workflow.
 
 **This workflow has 2 MANDATORY outputs. You MUST create BOTH or the workflow is FAILED:**
 
-### MANDATORY OUTPUT 1: No Infrastructure Stories if Architecture Exists
+### MANDATORY OUTPUT 1: Sprint 0 for Development Environment Setup
+
+**CRITICAL: Check if actual CODE files exist (not just architecture.md):**
 ```bash
 # RUN THIS COMMAND FIRST:
-ls -la backend/src/ frontend/src/ prisma/schema.prisma docker-compose.yml 2>/dev/null
+ls -la docker-compose.yml .github/workflows/*.yml .husky/pre-commit 2>/dev/null
 ```
-- **IF files exist** → Architecture was already run
-- **IF Architecture exists** → STORY-001 MUST be a BUSINESS FEATURE (e.g., "TMA Authentication", "Data Pipeline")
-- **FORBIDDEN if Architecture exists:** "Project Setup", "Database Schema", "Backend Skeleton", "CI/CD Pipeline", "Docker Setup"
-- **VIOLATION = WORKFLOW FAILURE**
+
+**IF dev files DON'T exist → CREATE Sprint 0 "Development Environment Setup" (2-4 stories, 8-12 points):**
+
+Sprint 0 MUST include these stories (даже если architecture.md exists):
+
+1. **STORY-000: Docker Local Environment** (3 points)
+   - docker-compose.yml для PostgreSQL + Redis
+   - .env.example файл
+   - README: инструкции для запуска локально
+
+2. **STORY-001: CI/CD Pipeline** (3 points)
+   - .github/workflows/ci.yml (tests на каждый PR)
+   - .github/workflows/deploy.yml (deploy на Railway)
+   - GitHub secrets configuration
+
+3. **STORY-002: Pre-commit Hooks** (2 points)
+   - Husky setup
+   - ESLint + Prettier checks
+   - TypeScript typecheck
+   - Commit message validation
+
+4. **STORY-003: Testing Infrastructure** (2 points)
+   - Vitest config для backend unit tests
+   - Playwright config для E2E tests
+   - Test database setup (Prisma test DB)
+
+**Total Sprint 0:** 10 points, ~1 week для setup
+
+**IF dev files EXIST → Skip Sprint 0, start with Sprint 1 business features**
+
+**FORBIDDEN для Sprint 1 if Architecture exists:**
+- "Backend Skeleton" (уже создано architecture command)
+- "Project Structure" (уже создано)
+- "Database Schema Design" (уже в architecture.md)
+
+**ALLOWED для Sprint 1 even if Architecture exists:**
+- Business features (Authentication, User Management, etc.)
+- DevTools setup (если ещё не сделано в Sprint 0)
 
 ### MANDATORY OUTPUT 2: Task Queue File
 ```
