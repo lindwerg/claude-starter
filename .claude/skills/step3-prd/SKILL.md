@@ -32,11 +32,41 @@ PRD (Product Requirements Document) — полная спецификация п
 
 ---
 
+## PRE-FLIGHT: Загрузка контекста
+
+**BEFORE интервью — прочитай предыдущие документы:**
+
+### Шаг 1: Найти и прочитать Product Brief
+
+```bash
+# Найти последний product-brief
+ls -t docs/product-brief-*.md | head -1
+```
+
+**ОБЯЗАТЕЛЬНО прочитай:**
+- Executive Summary (зачем делаем)
+- Problem Statement (какую проблему решаем)
+- Target Audience (для кого)
+- Success Criteria (как измерим успех)
+
+**Если файл НЕ найден:**
+```
+❌ Product Brief не найден!
+
+Сначала создай бизнес-требования:
+/step2-brief
+```
+STOP — не продолжай без product-brief.
+
+---
+
 ## MANDATORY INTERVIEW PROCESS
 
 **CRITICAL — ЗАДАЙ ВСЕ ВОПРОСЫ ПОСЛЕДОВАТЕЛЬНО**
 
 Используй AskUserQuestion tool для КАЖДОГО вопроса. НЕ ПРОПУСКАЙ вопросы. НЕ генерируй документ пока не получишь ответы на ВСЕ вопросы.
+
+**ВАЖНО:** Используй контекст из Product Brief чтобы задавать более точные вопросы!
 
 ### Секция 1: Обзор продукта (3 вопроса)
 

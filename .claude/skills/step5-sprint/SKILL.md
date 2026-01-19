@@ -82,6 +82,44 @@ acceptance_criteria:
   - Редирект после успеха
 ```
 
+## PRE-FLIGHT: Проверка предыдущих документов
+
+**BEFORE сбора параметров — убедись что документы созданы:**
+
+### Шаг 1: Проверить Architecture
+
+```bash
+ls -t docs/architecture-*.md | head -1
+```
+
+**Если файл НЕ найден:**
+```
+❌ Architecture не найдена!
+
+Сначала создай архитектуру:
+/step4-arch
+```
+STOP — sprint planning требует архитектуру.
+
+### Шаг 2: Проверить PRD
+
+```bash
+ls -t docs/prd-*.md | head -1
+```
+
+**Если файл НЕ найден:**
+```
+❌ PRD не найден!
+
+Сначала создай requirements:
+/step3-prd
+```
+STOP — sprint planning требует PRD.
+
+**Примечание:** BMAD команда `sprint-planning` автоматически прочитает эти документы для извлечения epics, features, и requirements.
+
+---
+
 ## Call BMAD Backend
 
 Sprint planning в основном читает из PRD и Architecture документов. Нужно собрать только несколько уточняющих параметров.
