@@ -1,47 +1,99 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.1.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.2.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen?style=for-the-badge" alt="Node">
   <img src="https://img.shields.io/badge/Claude%20Code-required-orange?style=for-the-badge" alt="Claude Code">
 </p>
 
-<h1 align="center">Provide Starter Kit</h1>
+<h1 align="center">🚀 Provide Starter Kit</h1>
 
 <p align="center">
-  <strong>Autonomous Full-Stack Development with Claude Code</strong>
+  <strong>Унифицированная система разработки full-stack приложений с Claude Code</strong>
 </p>
 
 <p align="center">
-  Transform Claude Code into a production-ready development pipeline.<br>
-  From idea to deployed app — <em>automatically</em>.
+  От идеи до production — <em>автоматически</em>.<br>
+  Интерактивность + Системность + Автономность.
 </p>
 
 ---
 
-## Why Provide?
+## ✨ Что нового в версии 2.2
 
-Most starter kits give you **files**. Provide gives you a **development pipeline**.
+### 🎯 Полная унификация BMAD системы
 
-| Traditional Templates | Provide Starter Kit |
-|----------------------|---------------------|
-| Copy files, figure out the rest | Automated workflow from planning to deployment |
-| Manual code review | Quality gates that **block** bad code |
-| Hope tests pass | TDD enforced through task dependencies |
-| Context lost between sessions | Full traceability with sprint archives |
+**Проблема решена:** Раньше были дублирующиеся команды (step-* skills и BMAD commands). Изменения нужно было делать в двух местах.
 
-**Result:** Claude Code autonomously implements features, writes tests, and maintains code quality — while you focus on the product.
+**Решение:** Three-Tier Architecture — один source of truth, максимальная интерактивность, нулевое дублирование.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 1: SKILL LAYER (Интерактивный фронтенд)               │
+│ step2-brief  → 29 вопросов → собирает все детали           │
+│ step3-prd    → 23 вопроса  → requirements в деталях         │
+│ step4-arch   → 37 вопросов → полная архитектура            │
+│ step5-sprint → 6 вопросов  → планирование спринта          │
+└────────────────────────┬────────────────────────────────────┘
+                         ↓ YAML answers file
+┌─────────────────────────────────────────────────────────────┐
+│ BRIDGE: variable-bridge.sh                                  │
+│ - Загружает YAML с ответами                                 │
+│ - Экспортирует BMAD_* environment variables                 │
+│ - Вызывает BMAD команду в batch mode                        │
+└────────────────────────┬────────────────────────────────────┘
+                         ↓ BMAD_* env vars
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 2: COMMAND LAYER (BMAD систематический движок)        │
+│ product-brief   → template system → docs/product-brief.md   │
+│ prd             → template system → docs/prd.md             │
+│ architecture    → template system → docs/architecture.md    │
+│                 → Part 13 ⭐ → CLAUDE.md auto-update       │
+│ sprint-planning → template system → task-queue.yaml         │
+└────────────────────────┬────────────────────────────────────┘
+                         ↓ используют
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 3: INFRASTRUCTURE (Шаблоны, хелперы, скрипты)         │
+│ - templates/       (единые шаблоны документов)              │
+│ - helpers.md       (переиспользуемые функции)               │
+│ - workflow status  (отслеживание прогресса)                 │
+│ - bash scripts     (автоматизация)                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 🔥 Ключевые улучшения
+
+✅ **Part 13 восстановлен** — `/step4-arch` теперь автоматически обновляет `CLAUDE.md` с проектной архитектурой
+✅ **Нулевое дублирование** — один source of truth (BMAD templates), изменения в одном месте
+✅ **Максимальная интерактивность** — 29/23/37 детальных вопросов для полного понимания проекта
+✅ **Два режима работы** — Interactive (прямой вызов) и Batch (через step-*)
+✅ **Обратная совместимость** — старые команды работают как раньше
 
 ---
 
-## Quick Start
+## 🎯 Зачем Provide?
 
-### 1. Create Project Folder
+Большинство стартер-китов дают вам **файлы**. Provide даёт вам **систему разработки**.
+
+| Обычные шаблоны | Provide Starter Kit |
+|-----------------|---------------------|
+| Скопировал файлы — разбирайся дальше сам | Автоматический workflow от планирования до деплоя |
+| Ручной code review | Quality gates которые **блокируют** плохой код |
+| Надеешься что тесты пройдут | TDD через зависимости задач — пропустить нельзя |
+| Контекст теряется между сессиями | Полная трассируемость с архивами спринтов |
+
+**Результат:** Claude Code автономно реализует фичи, пишет тесты и поддерживает качество кода — а вы фокусируетесь на продукте.
+
+---
+
+## ⚡ Быстрый старт
+
+### 1. Создайте папку проекта
 
 ```bash
 mkdir my-app && cd my-app
 ```
 
-### 2. Install & Setup (One Command!)
+### 2. Установка (одна команда!)
 
 **macOS / Linux:**
 ```bash
@@ -53,349 +105,588 @@ curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/instal
 irm https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.ps1 | iex
 ```
 
-**What happens:**
-- Installs Claude Code config (`~/.claude/skills`, `rules`, `hooks`)
-- Creates `backend/` (VSA), `frontend/` (FSD), `docs/`
-- Sets up `package.json`, `tsconfig.json`, `docker-compose.yml`
-- Runs `pnpm install`
-- Initializes git repository
+**Что происходит:**
+- Устанавливает Claude Code конфиг в `~/.claude/` (skills, commands, rules, hooks)
+- Создаёт `backend/` (VSA), `frontend/` (FSD), `docs/`
+- Настраивает `package.json`, `tsconfig.json`, `docker-compose.yml`
+- Запускает `pnpm install` и инициализирует git
+- Готовая к работе структура за 2 минуты
 
-### 3. Start Building
+### 3. Начните разработку
 
 ```bash
-claude                # Launch Claude Code
-/product-brief        # Define what you're building
-/ralph-loop           # Start autonomous development
+claude                # Запустите Claude Code
+/step2-brief          # Опишите что строите (29 вопросов)
+/step3-prd            # Создайте PRD (23 вопроса)
+/step4-arch           # Спроектируйте архитектуру (37 вопросов) + CLAUDE.md update!
+/step5-sprint         # Спланируйте спринт (6 вопросов)
+/ralph-loop           # Начните автономную разработку
 ```
 
-**That's it!** Full project structure + dependencies + Claude workflow in one command.
+**Вот и всё!** Полная структура проекта + зависимости + workflow Claude за одну команду.
 
 ---
 
-## Features
+## 🏗️ Архитектура унифицированной системы
 
-<table>
-<tr>
-<td width="50%">
-
-### Ralph Loop
-Autonomous task execution. Processes **100+ tasks** without human intervention. Each task gets fresh context = no hallucinations.
-
-</td>
-<td width="50%">
-
-### Quality Gates
-TypeScript errors? **Blocked.** ESLint warnings? **Blocked.** Tests failing? **Blocked.** No bad code gets through.
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### Architecture First
-**FSD** (Feature-Sliced Design) for frontend. **VSA** (Vertical Slice Architecture) for backend. Production patterns from day one.
-
-</td>
-<td width="50%">
-
-### TDD Enforced
-Tests come first. Task dependencies ensure `test → implementation → verify` order. No skipping allowed.
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### API-First Development
-OpenAPI spec is the single source of truth. Types are generated, not written. Backend validates against spec.
-
-</td>
-<td width="50%">
-
-### Multi-Sprint Support
-Seamless sprint transitions. Archives preserve full history. Pick up exactly where you left off.
-
-</td>
-</tr>
-</table>
-
----
-
-## How It Works
+### Два пути — одна система
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        PROVIDE WORKFLOW                              │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│   /init-project        /architecture        /ralph-loop             │
-│        │                    │                    │                   │
-│        ▼                    ▼                    ▼                   │
-│   ┌─────────┐         ┌─────────┐         ┌─────────────┐           │
-│   │ Project │         │  Tech   │         │  Autonomous │           │
-│   │Structure│    →    │ Design  │    →    │  Execution  │           │
-│   └─────────┘         └─────────┘         └─────────────┘           │
-│                                                  │                   │
-│                                                  ▼                   │
-│                                           ┌───────────┐             │
-│                                           │  Quality  │             │
-│                                           │   Gates   │             │
-│                                           └───────────┘             │
-│                                                  │                   │
-│                                    ┌─────────────┼─────────────┐    │
-│                                    │             │             │    │
-│                                    ▼             ▼             ▼    │
-│                               TypeCheck       Lint          Test    │
-│                                    │             │             │    │
-│                                    └─────────────┴─────────────┘    │
-│                                                  │                   │
-│                                                  ▼                   │
-│                                              COMMIT                  │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│ ПУТЬ 1: Интерактивный (через step-* skills)            │
+└─────────────────────────────────────────────────────────┘
+
+User: /step2-brief
+  ↓ Задаёт 29 детальных вопросов через AskUserQuestion
+  ↓ Собирает: executive_summary, problem_statement, target_users,
+  ↓          key_features, business_goals, success_metrics,
+  ↓          in_scope, out_of_scope, stakeholders, constraints,
+  ↓          assumptions, risks (и ещё 17 переменных)
+  ↓
+  ↓ Создаёт /tmp/step2-answers.yaml со всеми ответами
+  ↓
+  ↓ Вызывает: bash ~/.claude/skills/bmad/bmad-v6/utils/variable-bridge.sh
+  ↓                product-brief
+  ↓                /tmp/step2-answers.yaml
+  ↓
+  ↓ variable-bridge.sh:
+  ↓   - Загружает YAML
+  ↓   - Экспортирует BMAD_EXECUTIVE_SUMMARY="...", BMAD_PROBLEM_STATEMENT="..."
+  ↓   - Устанавливает BMAD_BATCH_MODE=true
+  ↓   - Вызывает команду /product-brief
+  ↓
+  ↓ Команда product-brief:
+  ↓   - Проверяет BMAD_BATCH_MODE=true
+  ↓   - Загружает template из ~/.claude/config/bmad/templates/product-brief.md
+  ↓   - Подставляет BMAD_* переменные в {{placeholders}}
+  ↓   - Генерирует docs/product-brief-myapp-2026-01-19.md
+  ↓   - Обновляет workflow status
+  ↓
+Result: ✅ docs/product-brief-myapp-2026-01-19.md
+
+┌─────────────────────────────────────────────────────────┐
+│ ПУТЬ 2: Прямой (legacy, обратная совместимость)        │
+└─────────────────────────────────────────────────────────┘
+
+User: /product-brief
+  ↓ BMAD_BATCH_MODE не установлен → Interactive mode
+  ↓ Задаёт 14 базовых вопросов
+  ↓ Загружает template
+  ↓ Подставляет собранные ответы
+  ↓ Генерирует документ
+  ↓
+Result: ✅ docs/product-brief-myapp-2026-01-19.md
+```
+
+### Детализация по командам
+
+| Команда | Вопросов (step-*) | Переменных в YAML | Part 13 |
+|---------|-------------------|-------------------|---------|
+| **step2-brief → product-brief** | 29 | 29 | - |
+| **step3-prd → prd** | 23 | 23 | - |
+| **step4-arch → architecture** | 37 | 37 | ⭐ **ДА** — обновляет CLAUDE.md |
+| **step5-sprint → sprint-planning** | 6 | 6 | - |
+
+---
+
+## 🎯 Ключевые возможности
+
+### 🤖 Ralph Loop — Автономная разработка
+
+Релентлесс автономный цикл обрабатывает **100+ задач** без вмешательства человека. Каждая задача получает свежий контекст = нет галлюцинаций.
+
+```bash
+/ralph-loop  # Начать автономную разработку
+
+# Ralph читает .bmad/task-queue.yaml и выполняет:
+1. Взять следующую pending задачу
+2. Создать специализированного subagent (backend/frontend/test)
+3. Реализовать с свежим контекстом
+4. Запустить quality gates (typecheck/lint/test)
+5. Сделать commit если всё прошло
+6. Перейти к следующей задаче
+```
+
+### 🛡️ Quality Gates — Защита от плохого кода
+
+TypeScript ошибки? **ЗАБЛОКИРОВАНО.** ESLint warnings? **ЗАБЛОКИРОВАНО.** Тесты падают? **ЗАБЛОКИРОВАНО.** Плохой код не проходит.
+
+Хуки перехватывают Edit/Write операции и блокируют если:
+- TypeScript имеет ошибки → **BLOCKED**
+- ESLint имеет ошибки → **BLOCKED**
+- Тесты падают → **BLOCKED**
+
+Обойти невозможно. Качество кода **принудительное**, а не рекомендованное.
+
+### 🏛️ Architecture First — Production-ready паттерны
+
+**FSD** (Feature-Sliced Design) для frontend. **VSA** (Vertical Slice Architecture) для backend. Продакшен паттерны с первого дня.
+
+```
+frontend/src/              backend/src/
+├── app/                   ├── features/
+├── pages/                 │   └── users/
+├── widgets/               │       └── createUser/
+├── features/              │           ├── controller.ts
+├── entities/              │           ├── service.ts
+└── shared/                │           ├── repository.ts
+                           │           └── dto.ts
+                           └── shared/
+```
+
+**Правила импортов:**
+- FSD: импорты только вниз по слоям
+- VSA: нет cross-feature импортов
+
+### 🧪 TDD Enforced — Тесты обязательны
+
+Тесты пишутся первыми. Зависимости задач обеспечивают порядок `test → implementation → verify`. Пропустить нельзя.
+
+**Inverted Test Pyramid:**
+- 70% интеграционных тестов
+- 20% unit тестов
+- 10% E2E тестов
+
+### 📋 API-First Development
+
+OpenAPI spec — единственный источник правды. Типы генерируются, а не пишутся. Backend валидирует против spec.
+
+```yaml
+# openapi.yaml
+paths:
+  /users:
+    post:
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserDto'
+
+# Типы генерируются автоматически:
+pnpm generate-api-types
+```
+
+### 📦 Multi-Sprint Support
+
+Бесшовные переходы между спринтами. Архивы сохраняют полную историю. Продолжайте точно с того места где остановились.
+
+---
+
+## 📚 Полный Workflow
+
+### Этап 1: Планирование
+
+```bash
+# Шаг 1: Бизнес-бриф (29 вопросов)
+/step2-brief
+# → docs/product-brief-myapp-2026-01-19.md
+
+# Шаг 2: PRD (23 вопроса)
+/step3-prd
+# → docs/prd-myapp-2026-01-19.md
+
+# Шаг 3: Архитектура (37 вопросов)
+/step4-arch
+# → docs/architecture-myapp-2026-01-19.md
+# → CLAUDE.md обновлён! ⭐
+
+# Шаг 4: Sprint Planning (6 вопросов)
+/step5-sprint
+# → docs/sprint-plan-myapp-2026-01-19.md
+# → .bmad/task-queue.yaml
+# → .bmad/sprint-status.yaml
+```
+
+### Этап 2: Разработка
+
+```bash
+# Валидация плана
+/step6-validate
+# Проверка архитектуры, генерация task queue
+
+# Автономная разработка
+/step7-build  # или /ralph-loop
+# Ralph выполняет все задачи из task-queue.yaml
+```
+
+### Этап 3: Проверка
+
+```bash
+# Проверить текущий статус
+/workflow-status
+
+# Валидировать архитектуру
+/validate-all
+
+# Проверить FSD/VSA compliance
+/vsa-fsd
 ```
 
 ---
 
-## Commands Reference
+## 🎨 Структура проекта
 
-### Core Workflow
-
-| Command | Description |
-|---------|-------------|
-| `/init-project` | Create FSD/VSA project structure with all configs |
-| `/product-brief` | Business analysis and requirements gathering |
-| `/prd` | Generate Product Requirements Document |
-| `/architecture` | Design technical architecture + openapi.yaml |
-| `/sprint-planning` | Break down into epics and stories |
-| `/validate-sprint` | Generate task queue from sprint plan |
-| `/ralph-loop` | **Start autonomous execution** |
-
-### Validation & Quality
-
-| Command | Description |
-|---------|-------------|
-| `/validate-all` | Full architecture validation (VSA/FSD) |
-| `/vsa-fsd` | Check architecture pattern compliance |
-| `/workflow-status` | Show current project progress |
-
-### Utilities
-
-| Command | Description |
-|---------|-------------|
-| `/help` | Show all available commands |
-| `/create-story` | Create a single story manually |
-| `/dev-story` | Develop one story interactively |
-| `/commit` | Git commit (no Claude attribution) |
-
----
-
-## Project Structure
-
-After `/init-project`, you get:
+После `/init-project` или install.sh:
 
 ```
 my-app/
 ├── backend/
 │   ├── src/
-│   │   ├── features/          # VSA vertical slices
+│   │   ├── features/              # VSA vertical slices
 │   │   │   └── users/
-│   │   │       └── createUser/
-│   │   │           ├── controller.ts
-│   │   │           ├── service.ts
-│   │   │           ├── repository.ts
-│   │   │           └── dto.ts
-│   │   └── shared/            # Middleware, utils
-│   ├── prisma/schema.prisma   # Database schema
-│   └── openapi.yaml           # API contract
+│   │   │       ├── createUser/
+│   │   │       │   ├── controller.ts
+│   │   │       │   ├── service.ts
+│   │   │       │   ├── repository.ts
+│   │   │       │   └── dto.ts (Zod schemas)
+│   │   │       └── getUsers/
+│   │   │           └── ...
+│   │   └── shared/                # middleware/, utils/, types/
+│   ├── prisma/
+│   │   └── schema.prisma          # Database schema
+│   ├── openapi.yaml               # ⭐ API contract (source of truth)
+│   └── package.json
 │
 ├── frontend/
 │   └── src/
-│       ├── app/               # App initialization
-│       ├── pages/             # Route pages
-│       ├── widgets/           # Standalone UI blocks
-│       ├── features/          # Business features
-│       ├── entities/          # Business entities
-│       └── shared/            # UI kit, hooks, utils
+│       ├── app/                   # Providers, routing, global styles
+│       ├── pages/                 # Route pages (1 page = 1 route)
+│       ├── widgets/               # Complex standalone UI blocks
+│       ├── features/              # Business features (reusable)
+│       ├── entities/              # Business entities (User, Product)
+│       └── shared/                # UI kit, hooks, api, utils
 │
-├── docker-compose.yml         # PostgreSQL + Redis
-├── package.json
-└── .claude/                   # Claude Code config
+├── docs/                          # Generated documentation
+│   ├── product-brief-myapp-*.md
+│   ├── prd-myapp-*.md
+│   ├── architecture-myapp-*.md
+│   └── sprint-plan-myapp-*.md
+│
+├── .bmad/                         # Sprint state
+│   ├── task-queue.yaml            # For Ralph Loop
+│   ├── sprint-status.yaml
+│   └── workflow-status.yaml
+│
+├── docker-compose.yml             # PostgreSQL + Redis
+├── CLAUDE.md                      # ⭐ Project instructions (auto-updated!)
+└── package.json                   # Workspace root
 ```
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-| Layer | Technologies |
-|-------|-------------|
+| Слой | Технологии |
+|------|------------|
 | **Frontend** | React 18+, TypeScript (strict), TanStack Query, Zustand, Tailwind CSS |
-| **Backend** | Node.js, Express/Fastify, Prisma, PostgreSQL, Zod |
+| **Backend** | Node.js 20+, Express/Fastify, Prisma, PostgreSQL, Zod validation |
 | **Testing** | Vitest, Testing Library, Playwright |
 | **Infrastructure** | Docker, pnpm, Vite |
+| **Tools** | ESLint (strict), Prettier, TypeScript strict mode |
 
 ---
 
-## Requirements
+## 📋 Справочник команд
 
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| **Node.js** | >= 18 | Required |
-| **Claude Code** | Latest | Install: `npm install -g @anthropic-ai/claude-code` |
-| **Git** | >= 2.x | For version control |
-| **Docker** | Latest | Optional, for databases |
+### 🎯 Core Workflow
 
----
+| Команда | Вопросов | Описание |
+|---------|----------|----------|
+| `/step2-brief` | 29 | Бизнес-анализ и требования |
+| `/step3-prd` | 23 | Создание Product Requirements Document |
+| `/step4-arch` | 37 | Проектирование архитектуры + **CLAUDE.md update** ⭐ |
+| `/step5-sprint` | 6 | Планирование спринта + генерация task-queue |
+| `/step6-validate` | - | Валидация плана спринта |
+| `/step7-build` | - | **Автономная разработка** (Ralph Loop) |
 
-## Installation Options
+### 🔧 Прямой доступ к BMAD (legacy)
 
-### Option 1: One-liner (Recommended)
+| Команда | Режим | Описание |
+|---------|-------|----------|
+| `/product-brief` | Interactive | 14 вопросов, быстрый бриф |
+| `/prd` | Interactive | Детальный PRD |
+| `/architecture` | Interactive | Архитектура + Part 13 |
+| `/sprint-planning` | Interactive | Планирование спринта |
 
-**macOS / Linux:**
-```bash
-curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
-```
+### ✅ Валидация и качество
 
-**Windows:**
-```powershell
-irm https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.ps1 | iex
-```
+| Команда | Описание |
+|---------|----------|
+| `/validate-all` | Полная валидация архитектуры (VSA/FSD) |
+| `/vsa-fsd` | Проверка соответствия паттернам |
+| `/workflow-status` | Показать текущий прогресс проекта |
 
-### Option 2: npx (No Install)
+### 🔨 Утилиты
 
-```bash
-npx lindwerg-go init
-```
-
-### Option 3: Global Install
-
-```bash
-npm install -g lindwerg-go
-provide-starter init
-```
-
-### What Gets Installed
-
-```
-~/.claude/
-├── skills/         # Slash commands (/init-project, /ralph-loop, etc.)
-├── rules/          # Code quality rules (FSD, VSA, TypeScript strict)
-├── agents/         # Subagents for Ralph Loop
-├── hooks/          # Quality enforcement hooks
-├── templates/      # Project templates
-└── settings.json   # Hook configuration
-```
+| Команда | Описание |
+|---------|----------|
+| `/help` | Показать все доступные команды |
+| `/create-story` | Создать одну story вручную |
+| `/dev-story` | Разработать одну story интерактивно |
+| `/add-feature` | Добавить новую фичу динамически |
+| `/commit` | Git commit (без Claude attribution) |
 
 ---
 
-## Uninstall
+## 🔧 Требования
 
-```bash
-bash ~/.claude/uninstall.sh
+| Требование | Версия | Примечания |
+|------------|--------|------------|
+| **Node.js** | >= 18 | Обязательно |
+| **Claude Code** | Latest | Установка: `npm install -g @anthropic-ai/claude-code` |
+| **Git** | >= 2.x | Для version control |
+| **Docker** | Latest | Опционально, для баз данных |
+| **pnpm** | >= 8.x | Используется по умолчанию |
+
+---
+
+## 🎓 Подробная документация
+
+### 📖 Part 13: CLAUDE.md Auto-Update
+
+После выполнения `/step4-arch` (37 вопросов об архитектуре), команда `/architecture` **автоматически обновляет** `CLAUDE.md` в корне проекта:
+
+**Что добавляется в CLAUDE.md:**
+```markdown
+## Project Architecture
+
+> Auto-generated from architecture.md on 2026-01-19
+
+### Architectural Pattern
+Pattern: Modular Monolith
+Rationale: Fast development, easy deployment, sufficient for SMB scale
+
+### Technology Stack
+Backend: Node.js 20, Express, Prisma, PostgreSQL 16
+Frontend: React 18, TypeScript strict, TanStack Query, Zustand
+Database: PostgreSQL 16 with pg_trgm extension
+
+### Data Model (Core Entities)
+User (id, email, name, role, createdAt)
+  - Has many: Posts, Comments
+Post (id, title, content, userId, createdAt)
+  - Belongs to: User
+
+### API Guidelines
+REST API with JWT authentication
+/api/v1/ versioning strategy
+
+**Key Endpoints:**
+```
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET /api/v1/users/{id}
 ```
 
-Or manually:
+### Architectural Drivers (Critical NFRs)
+- Performance: API response < 200ms p95
+- Security: JWT auth, HTTPS only, GDPR compliance
+- Scalability: 10,000 queries/day
+```
+
+**Зачем это нужно:**
+- Все будущие Claude сессии получают контекст проекта автоматически
+- Ralph Loop знает архитектуру без повторных вопросов
+- Все skills видят проектные решения и tech stack
+- Консистентность между всеми сессиями
+
+### 📝 Answers File Schemas
+
+Подробная документация YAML структуры для всех answer files:
+
+**Расположение:** `.claude/skills/bmad/bmad-v6/utils/answers-file-schemas.md`
+
+**Содержит:**
+- Полные схемы для step2/step3/step4/step5 answers
+- Naming conventions (snake_case → {{placeholder}} → BMAD_UPPER_SNAKE)
+- Validation rules
+- Troubleshooting guide
+- Usage examples
+
+### 🔗 Variable Bridge
+
+**Файл:** `.claude/skills/bmad/bmad-v6/utils/variable-bridge.sh`
+
+**Что делает:**
+1. Загружает YAML файл с ответами
+2. Парсит переменные (simple grep/sed approach)
+3. Экспортирует как BMAD_* environment variables
+4. Устанавливает BMAD_BATCH_MODE=true
+5. Вызывает BMAD команду
+
+**Пример использования:**
 ```bash
-rm -rf ~/.claude/skills/provide
-rm -rf ~/.claude/rules
-rm -rf ~/.claude/hooks
+# Создать answers file
+cat > /tmp/step2-answers.yaml <<EOF
+executive_summary: "AI chatbot for support"
+problem_statement: "Manual tickets take 24h+"
+# ... все 29 переменных
+EOF
+
+# Вызвать bridge
+bash ~/.claude/skills/bmad/bmad-v6/utils/variable-bridge.sh \
+  product-brief \
+  /tmp/step2-answers.yaml
 ```
 
 ---
 
-## FAQ
+## 🤔 FAQ
 
 <details>
-<summary><strong>What is Ralph Loop?</strong></summary>
+<summary><strong>В чём разница между step-* и прямыми командами?</strong></summary>
+
+**step-* skills** — интерактивный фронтенд:
+- `/step2-brief` → 29 детальных вопросов
+- `/step3-prd` → 23 вопроса
+- `/step4-arch` → 37 вопросов
+- Создают YAML файл с ответами
+- Вызывают BMAD backend через variable-bridge.sh
+
+**Прямые команды** — BMAD backend:
+- `/product-brief` → 14 базовых вопросов (legacy)
+- `/prd` → interactive PRD
+- `/architecture` → interactive architecture
+- Работают в двух режимах: interactive и batch
+
+**Рекомендация:** Используйте step-* для максимальной детализации.
+
+</details>
+
+<details>
+<summary><strong>Что такое Ralph Loop?</strong></summary>
 
 **R**elentless **A**utonomous **L**oop for **P**roduct **H**acking.
 
-Ralph reads `task-queue.yaml` and executes tasks one by one:
-1. Pick next pending task
-2. Spawn specialized subagent (backend/frontend/test)
-3. Implement with fresh context
-4. Run quality gates (typecheck/lint/test)
-5. Commit if all pass
-6. Move to next task
+Ralph читает `.bmad/task-queue.yaml` и выполняет задачи одну за другой:
+1. Берёт следующую pending задачу
+2. Создаёт специализированного subagent (backend/frontend/test)
+3. Реализует с свежим контекстом
+4. Запускает quality gates (typecheck/lint/test)
+5. Делает commit если всё прошло
+6. Переходит к следующей задаче
+
+**Результат:** 100+ задач выполняются автономно без галлюцинаций.
 
 </details>
 
 <details>
-<summary><strong>How do Quality Gates work?</strong></summary>
+<summary><strong>Как работают Quality Gates?</strong></summary>
 
-Hooks intercept Edit/Write operations and block if:
-- TypeScript has errors → **BLOCKED**
-- ESLint has errors → **BLOCKED**
-- Tests are failing → **BLOCKED**
+Хуки перехватывают операции Edit/Write и блокируют если:
+- TypeScript имеет ошибки → **BLOCKED**
+- ESLint имеет errors (warnings OK) → **BLOCKED**
+- Тесты падают → **BLOCKED**
 
-No way to bypass. Code quality is **enforced**, not suggested.
+Обойти невозможно. Код проходит только если качество соблюдено.
+
+**Настройка:** `.claude/settings.json` → `enableHooks: true`
 
 </details>
 
 <details>
-<summary><strong>What's FSD / VSA?</strong></summary>
+<summary><strong>Что такое FSD и VSA?</strong></summary>
 
-**FSD (Feature-Sliced Design)** — Frontend architecture with clear layer boundaries:
+**FSD (Feature-Sliced Design)** — frontend архитектура с чёткими границами слоёв:
 - `app/` → `pages/` → `widgets/` → `features/` → `entities/` → `shared/`
-- Import only from layers below
+- Импорты только из слоёв ниже
+- Нет cross-slice импортов в одном слое
 
-**VSA (Vertical Slice Architecture)** — Backend pattern where each endpoint is isolated:
-- `createUser/` contains controller, service, repository, dto
-- No cross-feature imports
+**VSA (Vertical Slice Architecture)** — backend паттерн где каждый endpoint изолирован:
+- `createUser/` содержит controller, service, repository, dto
+- Нет cross-feature зависимостей
+- REPR pattern (Request-Endpoint-Presenter-Response)
 
 </details>
 
 <details>
-<summary><strong>Can I use this with existing projects?</strong></summary>
+<summary><strong>Можно ли использовать с существующим проектом?</strong></summary>
 
-Yes! Run install script, then in your project:
+Да! Запустите install script, затем в вашем проекте:
+
 ```bash
 claude
-/validate-all    # Check current architecture
-/help            # See available commands
+/validate-all    # Проверить текущую архитектуру
+/help            # Посмотреть доступные команды
 ```
+
+Если проект не следует FSD/VSA, validation покажет что нужно исправить.
+
+</details>
+
+<details>
+<summary><strong>Как обновиться с версии 2.1 до 2.2?</strong></summary>
+
+```bash
+# Переустановить глобальные files
+curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
+
+# Проверить что новые файлы установлены
+ls -la ~/.claude/skills/bmad/bmad-v6/utils/variable-bridge.sh
+ls -la ~/.claude/skills/bmad/bmad-v6/utils/answers-file-schemas.md
+grep "Call BMAD Backend" ~/.claude/skills/step2-brief/SKILL.md
+```
+
+Ваши проекты продолжат работать — изменения только в `~/.claude/`.
 
 </details>
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
-Contributions welcome! Areas for improvement:
+Contributions welcome! Области для улучшения:
 
-- [ ] E2E scenario validator enhancements
-- [ ] Parallel task execution
-- [ ] New blocker type detectors
+- [ ] Параллельное выполнение задач в Ralph Loop
+- [ ] Новые детекторы blockers
 - [ ] Coverage threshold gates
 - [ ] Docker-compose auto-generation
+- [ ] Новые templates для разных типов проектов
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
-
----
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [INSTALLATION.md](./docs/INSTALLATION.md) | Detailed installation guide |
-| [WORKFLOW.md](./docs/WORKFLOW.md) | BMAD workflow explanation |
-| [AGENTS.md](./docs/AGENTS.md) | Subagent roles and capabilities |
-| [HOOKS.md](./.claude/hooks/README.md) | Hook system documentation |
+См. [CONTRIBUTING.md](./CONTRIBUTING.md) для guidelines.
 
 ---
 
-## License
+## 📄 Дополнительная документация
 
-MIT — see [LICENSE](./LICENSE) for details.
+| Документ | Описание |
+|----------|----------|
+| [answers-file-schemas.md](./.claude/skills/bmad/bmad-v6/utils/answers-file-schemas.md) | YAML schemas для всех answer files |
+| [helpers.md](./.claude/skills/bmad/bmad-v6/utils/helpers.md) | Переиспользуемые helper функции |
+| [HOOKS.md](./.claude/hooks/README.md) | Документация системы хуков |
+
+---
+
+## 📜 License
+
+MIT — см. [LICENSE](./LICENSE) для деталей.
+
+---
+
+## 🎯 Что дальше?
+
+После установки:
+
+1. **Создайте проект:** `/step2-brief` → определите что строите
+2. **Спроектируйте:** `/step3-prd` → `/step4-arch` → полная документация + CLAUDE.md update
+3. **Запустите Ralph:** `/step5-sprint` → `/ralph-loop` → автономная разработка
+4. **Деплой:** Следуйте инструкциям в `docs/` для деплоя
 
 ---
 
 <p align="center">
-  <strong>Built for Claude Code</strong> — The best AI pair programmer.
+  <strong>Построено для Claude Code</strong> — лучший AI pair programmer.
 </p>
 
 <p align="center">
-  <a href="https://github.com/lindwerg/claude-starter/issues">Report Bug</a>
+  <a href="https://github.com/lindwerg/claude-starter/issues">Сообщить о баге</a>
   ·
-  <a href="https://github.com/lindwerg/claude-starter/issues">Request Feature</a>
+  <a href="https://github.com/lindwerg/claude-starter/issues">Предложить фичу</a>
+  ·
+  <a href="https://github.com/lindwerg/claude-starter">⭐ Star на GitHub</a>
+</p>
+
+<p align="center">
+  <sub>Made with ❤️ for the Claude Code community</sub>
 </p>
