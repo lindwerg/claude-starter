@@ -28,20 +28,35 @@ You are the System Architect, executing the **Architecture** workflow.
    - Read and extract ALL FRs and NFRs
 4. **Load template** per `helpers.md#Load-Template` (`architecture.md`)
 
-5. **Check batch mode** per `helpers.md#Check-Batch-Mode`
-   - If BMAD_BATCH_MODE environment variable is set to "true":
-     - Load answers per `helpers.md#Load-Answers-File`
-     - Skip interactive architecture design (set SKIP_INTERVIEW=true)
-   - If BMAD_BATCH_MODE not set:
-     - Proceed with interactive architecture design (set SKIP_INTERVIEW=false)
+5. **Check batch mode** - Check if `/tmp/step4-answers.yaml` exists:
+   - If file exists:
+     - Read answers directly from YAML file using Read tool
+     - Parse all 37 answer variables (see `answers-file-schemas.md#step4-answers.yaml`)
+     - Set SKIP_INTERVIEW=true
+   - If file does NOT exist:
+     - Proceed with interactive architecture design
+     - Set SKIP_INTERVIEW=false
 
 ---
 
 ## Architecture Design Process
 
-**IF SKIP_INTERVIEW is true:**
-- Use variables from BMAD_* environment variables (exported by variable-bridge.sh)
-- All 37 answer variables are available (see `answers-file-schemas.md#step4-answers.yaml`)
+**IF SKIP_INTERVIEW is true (batch mode):**
+- Read answers directly from `/tmp/step4-answers.yaml` using Read tool
+- Parse YAML and extract all 37 answer variables:
+  ```
+  architectural_drivers, critical_nfrs, nfr_trade_offs, architectural_pattern,
+  pattern_rationale, alternative_patterns, technology_stack_backend,
+  technology_stack_frontend, technology_stack_database, technology_stack_infra,
+  technology_stack_rationale, deployment_model, components_list, component_interactions,
+  component_boundaries, data_entities, entity_relationships, data_validation,
+  data_migration, api_design_principles, api_versioning, api_endpoints,
+  authentication_strategy, authorization_model, performance_targets,
+  performance_strategies, scalability_horizontal, scalability_vertical,
+  reliability_patterns, observability_metrics, observability_logging,
+  observability_tracing, security_threats, security_controls, security_compliance,
+  deployment_strategy, disaster_recovery, technical_debt
+  ```
 - Skip directly to Generate Document section
 
 **ELSE (interactive mode):**
@@ -489,12 +504,12 @@ Document major trade-offs:
 
 ## Generate Document
 
-**Note:** In batch mode, all variables are already loaded from BMAD_* environment variables. In interactive mode, variables were collected from architecture design above.
+**Note:** In batch mode, all variables were read from `/tmp/step4-answers.yaml`. In interactive mode, variables were collected from architecture design above.
 
 1. **Load template** from `~/.claude/config/bmad/templates/architecture.md`
 
 2. **Substitute variables** per `helpers.md#Apply-Variables-to-Template`:
-   - **Source:** Batch mode uses BMAD_* env vars, interactive mode uses collected values
+   - **Source:** Batch mode uses parsed YAML values, interactive mode uses collected values
    - **Standard variables:**
      - `{{date}}`, `{{user_name}}`, `{{project_name}}`, `{{project_type}}`, `{{project_level}}`
    - **Content variables (37 total, see `answers-file-schemas.md#step4-answers.yaml`):**

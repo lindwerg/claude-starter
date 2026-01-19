@@ -30,20 +30,22 @@ Before starting, execute these helper operations:
 3. **Load template** per `helpers.md#Load-Template`
    - Template: `~/.claude/config/bmad/templates/product-brief.md`
 
-4. **Check batch mode** per `helpers.md#Check-Batch-Mode`
-   - If BMAD_BATCH_MODE environment variable is set to "true":
-     - Load answers per `helpers.md#Load-Answers-File`
-     - Skip interactive interview (set SKIP_INTERVIEW=true)
-   - If BMAD_BATCH_MODE not set:
-     - Proceed with interactive interview (set SKIP_INTERVIEW=false)
+4. **Check batch mode** - Check if `/tmp/step2-answers.yaml` exists:
+   - If file exists:
+     - Read answers directly from YAML file using Read tool
+     - Parse all 29 answer variables (see `answers-file-schemas.md#step2-answers.yaml`)
+     - Set SKIP_INTERVIEW=true
+   - If file does NOT exist:
+     - Proceed with interactive interview
+     - Set SKIP_INTERVIEW=false
 
 ---
 
 ## Interview Script
 
-**IF SKIP_INTERVIEW is true:**
-- Use variables from BMAD_* environment variables (exported by variable-bridge.sh)
-- All 29 answer variables are available (see `answers-file-schemas.md#step2-answers.yaml`)
+**IF SKIP_INTERVIEW is true (batch mode):**
+- Read answers directly from `/tmp/step2-answers.yaml` using Read tool
+- Parse YAML and extract all 29 answer variables
 - Skip directly to Generate Document section
 
 **ELSE (interactive mode):**
@@ -278,7 +280,7 @@ Approach: **Professional, methodical, curious.** Ask clarifying follow-ups if an
 
 ## Generate Document
 
-**Note:** In batch mode, all variables are already loaded from BMAD_* environment variables. In interactive mode, variables were collected from user interview above.
+**Note:** In batch mode, all variables were read from `/tmp/step2-answers.yaml`. In interactive mode, variables were collected from user interview above.
 
 After collecting all inputs:
 

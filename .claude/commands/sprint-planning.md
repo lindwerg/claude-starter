@@ -35,12 +35,14 @@ You are the Scrum Master, executing the **Sprint Planning** workflow.
    - All functional requirements
    - Story estimates (if already present)
 
-6. **Check batch mode** per `helpers.md#Check-Batch-Mode`
-   - If BMAD_BATCH_MODE environment variable is set to "true":
-     - Load answers per `helpers.md#Load-Answers-File`
-     - Skip interactive planning questions (set SKIP_INTERVIEW=true)
-   - If BMAD_BATCH_MODE not set:
-     - Proceed with interactive sprint planning (set SKIP_INTERVIEW=false)
+6. **Check batch mode** - Check if `/tmp/step5-answers.yaml` exists:
+   - If file exists:
+     - Read answers directly from YAML file using Read tool
+     - Parse 6 answer variables (see `answers-file-schemas.md#step5-answers.yaml`)
+     - Set SKIP_INTERVIEW=true
+   - If file does NOT exist:
+     - Proceed with interactive sprint planning
+     - Set SKIP_INTERVIEW=false
 
 ---
 
@@ -70,11 +72,15 @@ ls -la backend/src/ frontend/src/ prisma/schema.prisma docker-compose.yml 2>/dev
 
 ## Sprint Planning Process
 
-**IF SKIP_INTERVIEW is true:**
-- Use variables from BMAD_* environment variables (exported by variable-bridge.sh)
-- All 6 answer variables are available (see `answers-file-schemas.md#step5-answers.yaml`)
+**IF SKIP_INTERVIEW is true (batch mode):**
+- Read answers directly from `/tmp/step5-answers.yaml` using Read tool
+- Parse YAML and extract 6 answer variables:
+  ```
+  team_velocity, sprint_duration, sprint_goal,
+  priority_adjustments, dependencies_external, sprint_start_date
+  ```
 - Sprint planning mostly reads from PRD/Architecture, only a few clarifying questions needed
-- Use batch mode values for: team_velocity, sprint_duration, sprint_goal, priority_adjustments, dependencies_external, sprint_start_date
+- Use batch mode values for team capacity and sprint parameters
 - Skip directly to story generation parts
 
 **ELSE (interactive mode):**
@@ -703,7 +709,7 @@ Run /create-story to create detailed story documents for Sprint 1 stories, or ru
 
 **(End of interactive mode)**
 
-**Note:** In batch mode, minimal variables (team_velocity, sprint_duration, sprint_goal, etc.) are loaded from BMAD_* environment variables. Sprint planning mostly reads from PRD/Architecture documents, so batch mode only supplements with a few clarifying values.
+**Note:** In batch mode, minimal variables (team_velocity, sprint_duration, sprint_goal, etc.) were read from `/tmp/step5-answers.yaml`. Sprint planning mostly reads from PRD/Architecture documents, so batch mode only supplements with a few clarifying values.
 
 ---
 
