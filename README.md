@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.2.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.3.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen?style=for-the-badge" alt="Node">
   <img src="https://img.shields.io/badge/Claude%20Code-required-orange?style=for-the-badge" alt="Claude Code">
@@ -18,7 +18,28 @@
 
 ---
 
-## ✨ Что нового в версии 2.2
+## ✨ Что нового в версии 2.3
+
+### 🎯 Умная установка (Smart Installation)
+
+install.sh теперь **автоматически определяет** тип проекта:
+
+| Ситуация | Режим | Что устанавливается |
+|----------|-------|---------------------|
+| Пустая папка | **FULL** | Backend + Frontend + Docker + Хуки |
+| Есть package.json / backend/ / frontend/ | **HOOKS_ONLY** | Только хуки + CLAUDE.md |
+| Есть файлы, но не Node.js проект | **PROMPT** | Спрашивает что делать |
+
+**Теперь можно:**
+```bash
+cd existing-project
+curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
+# ✅ Хуки установятся, файлы не тронет
+```
+
+---
+
+## ✨ Версия 2.2 (Three-Tier Architecture)
 
 ### 🎯 Полная унификация BMAD системы
 
@@ -87,30 +108,48 @@
 
 ## ⚡ Быстрый старт
 
-### 1. Создайте папку проекта
+install.sh **автоматически определяет** режим установки:
+
+### Вариант 1: Новый проект (полная установка)
 
 ```bash
 mkdir my-app && cd my-app
-```
-
-### 2. Установка (одна команда!)
-
-**macOS / Linux:**
-```bash
 curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
 ```
 
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.ps1 | iex
+**Результат:**
+- ✅ Backend (VSA) + Frontend (FSD) + Docker Compose
+- ✅ PostgreSQL + Redis в контейнерах
+- ✅ Все зависимости установлены (pnpm)
+- ✅ Prisma настроена
+- ✅ Хуки и skills установлены глобально + локально
+- ✅ Тесты работают, серверы проверены
+- ✅ Git репозиторий инициализирован
+
+### Вариант 2: Существующий проект (только хуки)
+
+```bash
+cd existing-project  # Проект с package.json или backend/frontend/
+curl -fsSL https://raw.githubusercontent.com/lindwerg/claude-starter/main/install.sh | bash
 ```
 
-**Что происходит:**
-- Устанавливает Claude Code конфиг в `~/.claude/` (skills, commands, rules, hooks)
-- Создаёт `backend/` (VSA), `frontend/` (FSD), `docs/`
-- Настраивает `package.json`, `tsconfig.json`, `docker-compose.yml`
-- Запускает `pnpm install` и инициализирует git
-- Готовая к работе структура за 2 минуты
+**Результат:**
+- ✅ Глобальная установка в `~/.claude/` (skills, rules, hooks)
+- ✅ Локальные хуки в `.claude/hooks/` (25 хуков)
+- ✅ `CLAUDE.md` с проектными инструкциями
+- ✅ `settings.json` для Claude Code
+- ✅ **Существующие файлы не трогаются**
+
+### 🤔 Что если папка содержит файлы, но это не Node.js проект?
+
+install.sh спросит что делать:
+```
+Выбери режим установки:
+  1) Полная установка (создать структуру проекта)
+  2) Только хуки (не изменять существующие файлы)
+```
+
+---
 
 ### 3. Начните разработку
 

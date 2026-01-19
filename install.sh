@@ -1405,26 +1405,148 @@ print_success() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
+# DETECT PROJECT TYPE
+# ═══════════════════════════════════════════════════════════════════════════
+
+detect_project_type() {
+  # Check if project already exists (has files)
+  local file_count=$(ls -A "$PROJECT_DIR" 2>/dev/null | wc -l | xargs)
+
+  if [ "$file_count" -eq 0 ]; then
+    # Empty directory → Full installation
+    echo "FULL"
+    return
+  fi
+
+  # Check if it's already a Node.js project
+  if [ -f "$PROJECT_DIR/package.json" ] || \
+     [ -d "$PROJECT_DIR/backend" ] || \
+     [ -d "$PROJECT_DIR/frontend" ] || \
+     [ -d "$PROJECT_DIR/src" ]; then
+    # Existing project → Hooks only
+    echo "HOOKS_ONLY"
+    return
+  fi
+
+  # Has some files but not a project → Ask user
+  echo "UNKNOWN"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HOOKS ONLY MODE
+# ═══════════════════════════════════════════════════════════════════════════
+
+install_hooks_only() {
+  log_step "Режим: установка хуков в существующий проект"
+
+  backup_existing
+  clone_repo
+  install_claude_config
+  setup_project_claude
+
+  # Success message for hooks only
+  echo ""
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${GREEN}                                                                 ${NC}"
+  echo -e "${GREEN}   ✅  ХУКИ УСТАНОВЛЕНЫ В ПРОЕКТ!                                ${NC}"
+  echo -e "${GREEN}                                                                 ${NC}"
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  echo -e "  ${CYAN}📁 Установлено:${NC}"
+  echo ""
+  echo "     ~/.claude/           Глобальные настройки (skills, rules, hooks)"
+  echo "     .claude/hooks/       25 хуков для проекта"
+  echo "     .claude/settings.json"
+  echo "     CLAUDE.md            Проектные инструкции"
+  echo ""
+  echo -e "  ${CYAN}🪝 Активные хуки:${NC}"
+  echo ""
+  echo "     quality-check       TypeScript strict mode"
+  echo "     auto-format         Prettier/ESLint autofix"
+  echo "     ralph-*             Ralph Loop automation (7 хуков)"
+  echo "     check-tests-pass    Блокировка если тесты fail"
+  echo ""
+  echo -e "  ${CYAN}🤖 Claude Code:${NC}"
+  echo ""
+  echo "     claude"
+  echo ""
+  echo -e "     ${GREEN}/product-brief${NC}    → Бизнес-требования"
+  echo -e "     ${GREEN}/architecture${NC}     → Техническая архитектура"
+  echo -e "     ${GREEN}/validate-sprint${NC}  → Генерация задач"
+  echo -e "     ${GREEN}/ralph-loop${NC}       → Автономная разработка"
+  echo ""
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════════════════════════════════
 
 main() {
   print_banner
   check_prerequisites
-  assign_free_ports
-  backup_existing
-  clone_repo
-  install_claude_config
-  create_project_structure
-  create_config_files
-  create_backend_files
-  create_frontend_files
-  setup_project_claude
-  start_docker_services
-  install_and_setup
-  verify_servers
-  init_git
-  print_success
+
+  # Detect project type
+  MODE=$(detect_project_type)
+
+  case "$MODE" in
+    HOOKS_ONLY)
+      log_step "Обнаружен существующий проект"
+      install_hooks_only
+      ;;
+    FULL)
+      log_step "Пустая папка → полная установка"
+      assign_free_ports
+      backup_existing
+      clone_repo
+      install_claude_config
+      create_project_structure
+      create_config_files
+      create_backend_files
+      create_frontend_files
+      setup_project_claude
+      start_docker_services
+      install_and_setup
+      verify_servers
+      init_git
+      print_success
+      ;;
+    UNKNOWN)
+      log_warn "Папка содержит файлы, но не похожа на Node.js проект"
+      echo ""
+      echo "Выбери режим установки:"
+      echo "  1) Полная установка (создать структуру проекта)"
+      echo "  2) Только хуки (не изменять существующие файлы)"
+      echo ""
+      read -p "Введи номер (1 или 2): " choice
+
+      case "$choice" in
+        1)
+          log_step "Режим: полная установка"
+          assign_free_ports
+          backup_existing
+          clone_repo
+          install_claude_config
+          create_project_structure
+          create_config_files
+          create_backend_files
+          create_frontend_files
+          setup_project_claude
+          start_docker_services
+          install_and_setup
+          verify_servers
+          init_git
+          print_success
+          ;;
+        2)
+          install_hooks_only
+          ;;
+        *)
+          log_error "Неверный выбор. Установка отменена."
+          exit 1
+          ;;
+      esac
+      ;;
+  esac
 }
 
 main "$@"

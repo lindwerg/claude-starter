@@ -213,5 +213,10 @@
         ]
       }
     ]
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "$HOME/.claude/hooks/status-line.sh"
+  },
+  "model": "sonnet"
 }

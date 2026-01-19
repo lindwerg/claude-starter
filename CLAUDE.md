@@ -1,117 +1,31 @@
-# Provide Starter Kit - Глобальные инструкции
+# Project Instructions
 
-> **Язык**: Всегда отвечай на русском.
+> Inherits from `~/.claude/CLAUDE.md` (FSD + VSA standards)
 
-## Основные принципы
+## Communication
 
-1. **Architecture First** — FSD (frontend) + VSA (backend). Без исключений.
-2. **Spec-Driven** — OpenAPI.yaml — единственный источник правды для API.
-3. **Production-Ready** — TypeScript strict, тесты, error handling с первого дня.
-4. **Inverted Pyramid** — 70% интеграционных, 20% unit, 10% E2E.
+Always respond in **Russian**. Be direct, focus on architecture.
 
-## Технологический стек
+## Project Structure
 
-- **Frontend**: React 18+, TypeScript (strict), TanStack Query, Zustand, Tailwind CSS
-- **Backend**: Node.js, Express/Fastify, Prisma, PostgreSQL, Zod validation
-- **Инструменты**: pnpm, Vite, Docker, Vitest, Playwright
+- `backend/` — VSA (Vertical Slice Architecture)
+- `frontend/` — FSD (Feature-Sliced Design)
+- `docs/` — PRD, Architecture, API spec
+- `.bmad/` — Sprint state and task queue
 
-## FSD Архитектура (Frontend)
-
-```
-src/
-├── app/          # Инициализация, providers, global styles
-├── pages/        # Полные страницы (1 page = 1 route)
-├── widgets/      # Независимые UI блоки со state
-├── features/     # Бизнес-фичи (переиспользуемые)
-├── entities/     # Бизнес-сущности (User, Product)
-└── shared/       # Общий код (ui/, lib/, hooks/, api/, types/)
-```
-
-### Правила импортов FSD
-
-```
-МОЖНО:                      НЕЛЬЗЯ:
-pages → всё ниже            features → features
-widgets → features+ниже     entities → features/widgets/pages
-features → entities+shared  shared → что-либо выше
-entities → только shared
-```
-
-## VSA Архитектура (Backend)
-
-```
-src/
-├── features/           # Vertical slices
-│   └── [feature]/
-│       └── [slice]/    # createUser, getUsers, etc.
-│           ├── controller.ts
-│           ├── service.ts
-│           ├── repository.ts
-│           ├── dto.ts (Zod)
-│           └── index.ts
-├── shared/             # middleware/, utils/, types/, config/
-├── openapi.yaml        # API контракт (source of truth)
-└── prisma/schema.prisma
-```
-
-## Правила качества кода
-
-### Всегда
-
-- Полная TypeScript типизация (no `any`, no `as unknown`)
-- Тесты рядом с кодом (integration first)
-- Error handling везде
-- Zod валидация для всех inputs
-- Обновлять openapi.yaml при изменении API
-
-### Никогда
-
-- Нарушать FSD/VSA архитектуру
-- Пропускать null/undefined проверки
-- Использовать `@ts-ignore` или `!` non-null assertion
-- Хардкодить значения (magic numbers/strings)
-
-## Быстрый старт
+## Quick Commands
 
 ```bash
-mkdir my-app && cd my-app
-/init-project      # Создание структуры проекта
-/workflow-init     # Инициализация BMAD
+pnpm dev           # Start backend + frontend
+pnpm typecheck     # TypeScript check
+pnpm test          # Run tests
+pnpm db:migrate    # Prisma migrations
+pnpm db:studio     # Prisma Studio GUI
 ```
 
-## Workflow разработки
+## Workflow
 
-### Основной процесс (BMAD Method)
-
-| Шаг | Команда | Описание |
-|-----|---------|----------|
-| 1 | `/init-project` | Создание структуры проекта |
-| 2 | `/workflow-init` | Инициализация BMAD |
-| 3 | `/product-brief` | Бизнес-анализ требований |
-| 4 | `/prd` | Документ требований (PRD) |
-| 5 | `/architecture` | Техническая архитектура |
-| 6 | `/sprint-planning` | Планирование спринта |
-| 7 | `/validate-sprint` | Валидация и очередь задач |
-| 8 | `/ralph-loop` | Автономная разработка |
-
-## Дополнительные команды
-
-### Разработка
-- `/create-story` — Создать отдельную story
-- `/dev-story` — Разработать одну story вручную
-- `/tech-spec` — Техническая спецификация (для Level 0-1 проектов)
-
-### Статус и валидация
-- `/workflow-status` — Статус прогресса проекта
-- `/validate-all` — Полная валидация архитектуры
-- `/validate-sprint` — Валидация спринта + генерация task-queue
-
-### Утилиты
-- `/help` — Справка по командам
-- `/commit` — Git commit (без Claude attribution)
-
-### Advanced
-- `/bmad:brainstorm` — Мозговой штурм
-- `/bmad:research` — Исследование темы
-- `/bmad:create-ux-design` — Создание UX дизайна
-- `/bmad:solutioning-gate-check` — Проверка готовности к разработке
+1. `/product-brief` — Business requirements
+2. `/architecture` — Tech design
+3. `/validate-sprint` — Generate task queue
+4. `/ralph-loop` — Autonomous development
