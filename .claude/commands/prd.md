@@ -31,20 +31,30 @@ Execute these helper operations:
 4. **Load template** per `helpers.md#Load-Template`
    - Template: `~/.claude/config/bmad/templates/prd.md`
 
-5. **Check batch mode** per `helpers.md#Check-Batch-Mode`
-   - If BMAD_BATCH_MODE environment variable is set to "true":
-     - Load answers per `helpers.md#Load-Answers-File`
-     - Skip interactive requirements gathering (set SKIP_INTERVIEW=true)
-   - If BMAD_BATCH_MODE not set:
-     - Proceed with interactive requirements gathering (set SKIP_INTERVIEW=false)
+5. **Check batch mode** - Check if `/tmp/step3-answers.yaml` exists:
+   - If file exists:
+     - Read answers directly from YAML file using Read tool
+     - Parse all 23 answer variables (see `answers-file-schemas.md#step3-answers.yaml`)
+     - Set SKIP_INTERVIEW=true
+   - If file does NOT exist:
+     - Proceed with interactive requirements gathering
+     - Set SKIP_INTERVIEW=false
 
 ---
 
 ## Requirements Gathering Process
 
-**IF SKIP_INTERVIEW is true:**
-- Use variables from BMAD_* environment variables (exported by variable-bridge.sh)
-- All 23 answer variables are available (see `answers-file-schemas.md#step3-answers.yaml`)
+**IF SKIP_INTERVIEW is true (batch mode):**
+- Read answers directly from `/tmp/step3-answers.yaml` using Read tool
+- Parse YAML and extract all 23 answer variables:
+  ```
+  product_vision, product_goals, key_metrics, user_stories,
+  story_dependencies, edge_cases, authentication, p0_feature_specs,
+  integrations, database_schema, ui_ux_requirements, nfr_performance,
+  nfr_security, nfr_scalability, nfr_reliability, nfr_compatibility,
+  nfr_observability, compliance, out_of_scope, risks, assumptions,
+  dependencies_external, tech_constraints
+  ```
 - Skip directly to Generate Document section
 
 **ELSE (interactive mode):**
